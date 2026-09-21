@@ -34,7 +34,16 @@ deploy/            cell, bundle and release definitions
 docs/              architecture and research
 ```
 
+## Checking your work
+
+```sh
+script/cibuild
+```
+
+runs exactly what CI runs — the same checks, the same tools at the
+same pinned versions (`script/README.md`).
+
 ## Status
 
-Planning is complete; construction starts with Phase 0 of the roadmap.
-Nothing here is built yet.
+Planning is complete, and Phase 0 has begun: the repository checks and
+CI run on every push. No component is built yet.

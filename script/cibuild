@@ -1,0 +1,18 @@
+#!/bin/sh
+# script/cibuild: exactly what CI runs, and what anyone can run locally.
+# Bootstrap, then every test, reporting every failure together.
+set -u
+cd "$(dirname "$0")/.." || exit 1
+
+failed=""
+for step in bootstrap test test-integration; do
+    printf '\n##### script/%s\n' "$step"
+    "./script/$step" || failed="$failed $step"
+done
+
+echo
+if [ -n "$failed" ]; then
+    echo "script/cibuild FAILED:$failed"
+    exit 1
+fi
+echo "script/cibuild passed."

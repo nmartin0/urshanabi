@@ -1,0 +1,29 @@
+#!/bin/sh
+# script/check-boundaries: no component reaches into another (RULES.md
+# E2). Outside Markdown, a service may not mention another service's
+# directory, and a library may not mention any service's.
+set -u
+cd "$(dirname "$0")/.." || exit 1
+
+files=$(mktemp) || exit 1
+trap 'rm -f "$files"' EXIT
+git ls-files -co --exclude-standard -- 'services/*' 'libs/*' > "$files" || exit 1  # name-ok
+
+bad=0
+checked=0
+while IFS= read -r f; do
+    case "$f" in *.md) continue ;; esac
+    [ -f "$f" ] || continue
+    checked=$((checked + 1))
+    owner=$(printf '%s\n' "$f" | cut -d / -f 1-2)
+    for svc in services/*/; do
+        svc=${svc%/}
+        [ "$svc" = "$owner" ] && continue
+        if grep -q -F "$svc" "$f"; then
+            echo "BOUNDARY $f mentions $svc"; bad=1
+        fi
+    done
+done < "$files"
+
+[ "$bad" -eq 0 ] || { echo "check-boundaries FAILED"; exit 1; }
+echo "check-boundaries: $checked non-Markdown component files checked."

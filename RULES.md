@@ -75,6 +75,22 @@ configuration file counts as a manifest, since the tool fixes its
 name and location; the file carries settings, never commentary about
 the tool.
 
+**The name check enforces this rule (confirmed by the owner).** Its
+forbidden terms live in `script/names.list`, its configuration, as
+committed banned-term lists do in prose linters. A code line that must
+invoke a tool by name — the shell's equivalent of an import — may end
+with the marker `# name-ok`; the check refuses the marker in Markdown
+and on comment lines, so it can never excuse prose. Reviewed English
+phrases that happen to contain a listed word, such as the title of H8,
+are listed in `script/names.allow`.
+
+**A banned-term list catches only the names it knows.** So whenever a
+name is recorded in the named register kept outside the repository, it
+is added to `script/names.list` in the same change. When the list was
+first automated it lacked about 150 names researched after it was
+written; none had reached the repository, but only because the
+documents had been written carefully.
+
 **Provisional, pending the owner's confirmation:** generic technical
 vocabulary and published protocol designations — HTTP, TLS, SQL,
 JSON, YAML, OIDC, SAML, SCIM, RFC numbers — are treated as vocabulary
@@ -682,10 +698,26 @@ software company adopted across all its projects:
   dependencies in containers.
 
 **The top-level `script/` directory holds the same names, plus
-`cibuild` for CI and `check-boundaries` (E2).** Each top-level script
-does only what a person could do by hand: it walks every component,
+`cibuild` for CI.** Each top-level script does only what a person
+could do by hand: `script/each-component` walks every component and
 runs that component's script of the same name inside its directory,
-and reports. CI runs exactly the scripts a person runs.
+and `script/test` first runs every repository check — each executable
+`script/check-*`, discovered, never listed. CI runs exactly
+`script/cibuild`, which a person can run too; the CI definition does
+nothing else.
+
+**How components are found.** A top-level directory with its own
+README is a component; one without is a group, whose subdirectories
+are components (`libs/`, `services/`); `docs/` and `script/` are
+neither. A component holding only Markdown files is planned, and is
+reported rather than run. A top-level directory that is neither a
+component nor a group fails.
+
+**Tools are pinned.** `script/tools.lock` records every tool's
+version, download address and SHA-256 for each supported platform,
+each cross-checked against an independent published record when
+pinned. `script/bootstrap` installs them into the ignored `.tools/`
+directory and refuses any download whose checksum does not match.
 
 **The top-level scripts are plain POSIX `sh`**, linted by the
 canonical shell linter in POSIX mode, and they:
@@ -693,20 +725,24 @@ canonical shell linter in POSIX mode, and they:
 - change to the repository root first, so they behave the same from
   any directory;
 - find components by walking the tree, never from a fixed list;
-- treat a component without the named script as a failure, not a
-  skip;
+- treat a component holding anything but Markdown without the named
+  script as a failure, not a skip, so code can never arrive untested;
 - run every component even after a failure, then report every
   failure together — so they deliberately do not stop at the first
   error;
-- fail if they found no components at all, so a run that tested
-  nothing can never pass;
+- fail if they found no components at all, or `script/test` found no
+  repository checks, so a run that tested nothing can never pass;
 - never place a command whose exit status matters on the left of a
   pipe, because the option that propagates such failures entered the
   POSIX standard only in its 2024 edition and older shells lack it.
 
-**The scripts are tested themselves.** A test runs the top-level
-script against a planted failing component, a component with no
-script and an empty tree, and expects failure from all three.
+**The scripts are tested themselves.** `script/check-scripts` builds
+throwaway repositories and breaks every gate on purpose — a failing
+component, code without a script, an empty tree, an unknown
+directory, a failing check, a planted name, a missing citation, a
+component reaching into another, a flawed script, a checksum
+mismatch — and expects failure every time, with matching cases that
+must pass so a gate cannot simply fail everything.
 
 Why: Elysium's lint script reported success while a gate failed, and
 three of the four repositories inspected had the same class of fault

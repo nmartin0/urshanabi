@@ -1,0 +1,75 @@
+#!/bin/sh
+# script/check-names: no company, product, project or programming
+# language is named outside a manifest or tool configuration (RULES.md
+# H1). Terms are in script/names.list, one per line:
+#   w TERM   matches TERM as a whole word
+#   p TERM   matches words that start with TERM
+#   s TERM   matches TERM anywhere
+# Reviewed English phrases in script/names.allow are removed from a line
+# before it is checked. Files in script/names.exempt are not checked.
+# A code line that must invoke a tool by name may end with "# name-ok",
+# the shell's equivalent of an import; the marker is refused in
+# Markdown and on comment lines, so it can never excuse prose.
+set -u
+cd "$(dirname "$0")/.." || exit 1
+
+files=$(mktemp) || exit 1
+trap 'rm -f "$files"' EXIT
+git ls-files -co --exclude-standard > "$files" || exit 1  # name-ok
+
+awk -v listfile=script/names.list -v allowfile=script/names.allow \
+    -v exemptfile=script/names.exempt -v filelist="$files" '
+function wordch(c) { return c ~ /[a-z0-9_]/ }
+function strip(s, p,   i) {
+    while ((i = index(s, p)) > 0)
+        s = substr(s, 1, i - 1) " " substr(s, i + length(p))
+    return s
+}
+function hit(line, kind, term,   rest, off, i, before, after) {
+    rest = line; off = 0
+    while ((i = index(rest, term)) > 0) {
+        before = (off + i > 1) ? substr(line, off + i - 1, 1) : ""
+        after = substr(line, off + i + length(term), 1)
+        if (kind == "s") return 1
+        if (kind == "p" && !wordch(before)) return 1
+        if (kind == "w" && !wordch(before) && !wordch(after)) return 1
+        off += i; rest = substr(rest, i + 1)
+    }
+    return 0
+}
+BEGIN {
+    while ((getline l < listfile) > 0) {
+        if (l == "" || l ~ /^#/) continue
+        n++; kind[n] = substr(l, 1, 1); term[n] = tolower(substr(l, 3))
+        if (kind[n] !~ /^[wps]$/ || term[n] == "") {
+            print "FAIL: bad line in " listfile ": " l; bad = 1
+        }
+    }
+    if (n == 0) { print "FAIL: " listfile " is empty"; exit 1 }
+    while ((getline l < allowfile) > 0) if (l != "") allow[++m] = tolower(l)
+    while ((getline l < exemptfile) > 0) if (l != "") exempt[l] = 1
+    while ((getline path < filelist) > 0) {
+        if (path in exempt) continue
+        checked++; ln = 0
+        md = (path ~ /\.md$/)
+        while ((getline raw < path) > 0) {
+            ln++
+            if (raw ~ /# name-ok$/) {
+                if (md || raw ~ /^[ \t]*#/) {
+                    printf "FAIL %s:%d: name-ok marker not allowed here\n", path, ln
+                    bad = 1
+                } else { excused++; continue }
+            }
+            line = tolower(raw)
+            for (a = 1; a <= m; a++) line = strip(line, allow[a])
+            for (t = 1; t <= n; t++)
+                if (hit(line, kind[t], term[t])) {
+                    printf "NAME %s:%d: \"%s\"\n", path, ln, term[t]; hits++
+                }
+        }
+        close(path)
+    }
+    if (checked == 0) { print "FAIL: no files checked"; exit 1 }
+    if (bad || hits) exit 1
+    printf "check-names: %d files clean against %d terms; %d code lines excused by name-ok.\n", checked, n, excused
+}'

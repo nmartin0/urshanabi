@@ -1,0 +1,192 @@
+#!/bin/sh
+# script/check-scripts: the scripts are tested themselves (RULES.md E5,
+# roadmap R-127). Each case builds a throwaway repository, breaks one
+# thing on purpose and expects failure; the passing cases prove a gate
+# does not simply fail everything.
+set -u
+cd "$(dirname "$0")/.." || exit 1
+repo=$PWD
+PATH="$repo/.tools/bin:$PATH"
+export PATH
+
+base=$(mktemp -d) || exit 1
+trap 'rm -rf "$base"' EXIT
+log="$base/log"
+passed=0
+failed=""
+
+# tree NAME SCRIPT...: a fresh repository with the named scripts copied.
+tree() {
+    t="$base/$1"; shift
+    rm -rf "$t" && mkdir -p "$t/script" || exit 1
+    for s in "$@"; do cp "$repo/script/$s" "$t/script/" || exit 1; done
+    (cd "$t" && git init -q) || exit 1  # name-ok
+}
+
+# expect pass|fail DESCRIPTION COMMAND...: run COMMAND, check its status.
+expect() {
+    want=$1; what=$2; shift 2
+    "$@" > "$log" 2>&1
+    got=$?
+    case "$want-$got" in
+        pass-0) ok=1 ;;
+        pass-*) ok=0 ;;
+        fail-0) ok=0 ;;
+        *) ok=1 ;;
+    esac
+    if [ "$ok" -eq 1 ]; then
+        passed=$((passed + 1))
+    else
+        echo "SELF-TEST FAILED: $what (wanted $want, exit $got)"
+        sed 's/^/    /' "$log"
+        failed="$failed [$what]"
+    fi
+}
+
+component() {  # component DIR [SCRIPT-BODY]
+    mkdir -p "$t/$1/script" && printf '# %s\n' "$1" > "$t/$1/README.md"
+    if [ $# -ge 2 ]; then
+        printf '#!/bin/sh\n%s\n' "$2" > "$t/$1/script/test"
+        chmod +x "$t/$1/script/test"
+    fi
+}
+
+# --- each-component: discovery and delegation -------------------------
+tree empty each-component
+expect fail "an empty tree fails" "$t/script/each-component" test
+
+tree planned each-component
+mkdir -p "$t/contracts" && printf '# c\n' > "$t/contracts/README.md"
+expect pass "a tree of planned components passes" "$t/script/each-component" test
+
+tree good each-component
+component contracts 'exit 0'
+expect pass "a passing component passes" "$t/script/each-component" test
+
+tree bad each-component
+component contracts 'exit 1'
+component ui 'exit 0'
+expect fail "a failing component fails" "$t/script/each-component" test
+
+tree two each-component
+component contracts 'exit 1'
+component ui 'exit 1'
+"$t/script/each-component" test > "$log" 2>&1
+if grep -q "FAILED: contracts ui" "$log"; then passed=$((passed + 1))
+else failed="$failed [both failures are reported]"; echo "SELF-TEST FAILED: both failures are reported"; fi
+
+tree noscript each-component
+component contracts
+printf 'code\n' > "$t/contracts/main.src"
+expect fail "code without a test script fails" "$t/script/each-component" test
+
+tree grouped each-component
+mkdir -p "$t/services/a" && printf '# a\n' > "$t/services/a/README.md"
+printf 'code\n' > "$t/services/a/main.src"
+expect fail "a grouped component without a script fails" "$t/script/each-component" test
+
+tree unknown each-component
+component contracts 'exit 0'
+mkdir -p "$t/stray"
+expect fail "an unknown top-level directory fails" "$t/script/each-component" test
+
+# --- test: repository checks are discovered and all run ---------------
+tree agg test each-component
+component contracts 'exit 0'
+printf '#!/bin/sh\nexit 1\n' > "$t/script/check-a" && chmod +x "$t/script/check-a"
+printf '#!/bin/sh\ntouch "%s/ran-b"\n' "$t" > "$t/script/check-b" && chmod +x "$t/script/check-b"
+expect fail "a failing check fails script/test" "$t/script/test"
+if [ -f "$t/ran-b" ]; then passed=$((passed + 1))
+else failed="$failed [later checks still run]"; echo "SELF-TEST FAILED: later checks still run"; fi
+
+tree nochecks test each-component
+component contracts 'exit 0'
+expect fail "no repository checks fails script/test" "$t/script/test"
+
+# --- check-names ------------------------------------------------------
+names() {
+    tree "$1" check-names
+    printf 'w zork\ns quux\n' > "$t/script/names.list"
+    printf 'close calls go to the owner\n' > "$t/script/names.allow"
+    : > "$t/script/names.exempt"
+    printf '%s\n' "$2" > "$t/doc.md"
+}
+names n1 "Written in Zork."
+expect fail "a whole-word name fails" "$t/script/check-names"
+names n2 "A quuxesque event log."
+expect fail "an anywhere name fails" "$t/script/check-names"
+names n3 "A zorkish result, and close calls go to the owner."
+expect pass "an ordinary word and an allowed phrase pass" "$t/script/check-names"
+names n4 "zork tooling # name-ok"
+expect fail "the name-ok marker is refused in Markdown" "$t/script/check-names"
+names n5 "fine"
+printf '#!/bin/sh\n# uses zork # name-ok\n' > "$t/tool.sh"
+expect fail "the name-ok marker is refused on a comment line" "$t/script/check-names"
+names n6 "fine"
+printf '#!/bin/sh\nzork build  # name-ok\n' > "$t/tool.sh"
+expect pass "the name-ok marker excuses a code line" "$t/script/check-names"
+
+# --- check-docs -------------------------------------------------------
+docs() {
+    tree "$1" check-docs
+    mkdir -p "$t/conformance"
+    printf '# R\n\n## H1. One.\n' > "$t/RULES.md"
+    printf '**DENY-01** Denied.\n' > "$t/conformance/BEHAVIOURS.md"
+    printf '# Phase 0\n\n### R-01 First\n\n- **Class:** foundation\n- **Outcome:** x\n- **Done when:** y\n' > "$t/ROADMAP.md"
+}
+docs d1; printf 'See R-01, DENY-01 and H1.\n' > "$t/doc.md"
+expect pass "valid citations pass" "$t/script/check-docs"
+docs d2; printf 'See R-99.\n' > "$t/doc.md"
+expect fail "a missing roadmap item fails" "$t/script/check-docs"
+docs d3; printf 'See DENY-99.\n' > "$t/doc.md"
+expect fail "a missing property fails" "$t/script/check-docs"
+docs d4; printf 'See H9.\n' > "$t/doc.md"
+expect fail "a missing rule fails" "$t/script/check-docs"
+docs d5; printf '\n### R-01 Again\n\n- **Class:** x\n- **Outcome:** x\n- **Done when:** y\n' >> "$t/ROADMAP.md"
+expect fail "a repeated item number fails" "$t/script/check-docs"
+docs d6; printf '\n### R-02 Second\n\n- **Class:** x\n- **Outcome:** x\n' >> "$t/ROADMAP.md"
+expect fail "an item without a done-when fails" "$t/script/check-docs"
+
+# --- check-boundaries -------------------------------------------------
+tree b1 check-boundaries
+mkdir -p "$t/services/a" "$t/services/b"
+printf 'import services/b/internal\n' > "$t/services/a/main.src"
+printf 'fine\n' > "$t/services/b/main.src"
+expect fail "a service reaching into another fails" "$t/script/check-boundaries"
+tree b2 check-boundaries
+mkdir -p "$t/services/a" "$t/services/b"
+printf 'fine\n' > "$t/services/a/main.src"
+expect pass "separate services pass" "$t/script/check-boundaries"
+
+# --- check-shell ------------------------------------------------------
+tree s1 check-shell
+printf "#!/bin/sh\necho \$undefined_and_unquoted\n" > "$t/bad"
+expect fail "a flawed shell script fails" "$t/script/check-shell"
+
+# --- bootstrap: a checksum mismatch is refused ------------------------
+boot() {
+    tree "$1" bootstrap each-component
+    mkdir -p "$t/.fixture" "$t/contracts" && printf '# c\n' > "$t/contracts/README.md"
+    printf '#!/bin/sh\n' > "$t/.fixture/fake" && tar -cf "$t/fake.tar" -C "$t/.fixture" fake
+    if command -v sha256sum >/dev/null 2>&1; then
+        sum=$(sha256sum "$t/fake.tar" | cut -d ' ' -f 1)
+    else
+        sum=$(shasum -a 256 "$t/fake.tar" | cut -d ' ' -f 1)
+    fi
+    [ "$2" = wrong ] && sum=0000000000000000000000000000000000000000000000000000000000000000
+    for plat in linux-x86_64 linux-aarch64 darwin-x86_64 darwin-arm64; do  # name-ok
+        printf 'fake 1 %s %s file://%s/fake.tar fake\n' "$plat" "$sum" "$t"
+    done > "$t/script/tools.lock"
+}
+boot k1 right
+expect pass "a matching checksum installs" "$t/script/bootstrap"
+boot k2 wrong
+expect fail "a checksum mismatch is refused" "$t/script/bootstrap"
+if [ ! -e "$t/.tools/bin/fake" ]; then passed=$((passed + 1))
+else failed="$failed [nothing is installed on mismatch]"; echo "SELF-TEST FAILED: nothing is installed on mismatch"; fi
+
+if [ -n "$failed" ]; then
+    echo "check-scripts FAILED:$failed"
+    exit 1
+fi
+echo "check-scripts: $passed self-tests passed."

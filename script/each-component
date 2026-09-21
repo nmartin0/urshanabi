@@ -1,0 +1,80 @@
+#!/bin/sh
+# script/each-component NAME: run every component's own script/NAME,
+# inside that component's directory, and report every failure.
+#
+# Components are discovered, never listed (RULES.md E4, E5):
+#   - a top-level directory with its own README.md is a component;
+#   - a top-level directory without one is a group, and each of its
+#     subdirectories is a component (libs/, services/);
+#   - docs/ and script/ are not components.
+# A component holding only Markdown files is planned and is reported,
+# not run. Any other file in a component without script/NAME is a
+# failure, so code can never arrive untested.
+#
+# Deliberately no "set -e": every component runs even if one fails.
+set -u
+
+name=${1:-}
+if [ -z "$name" ]; then
+    echo "usage: script/each-component SCRIPT-NAME" >&2
+    exit 2
+fi
+
+cd "$(dirname "$0")/.." || exit 1
+
+found=0
+ran=0
+planned=""
+failed=""
+
+run_one() {
+    dir=$1
+    found=$((found + 1))
+    if [ -x "$dir/script/$name" ]; then
+        ran=$((ran + 1))
+        printf '=== %s: script/%s\n' "$dir" "$name"
+        (cd "$dir" && "./script/$name") || failed="$failed $dir"
+        return
+    fi
+    other=$(find "$dir" -type f ! -name '*.md' -print | head -n 1)
+    if [ -z "$other" ]; then
+        planned="$planned $dir"
+    else
+        echo "FAIL $dir: has $other but no executable script/$name"
+        failed="$failed $dir(no-script/$name)"
+    fi
+}
+
+for top in */; do
+    top=${top%/}
+    case "$top" in
+        docs|script) continue ;;
+    esac
+    if [ -f "$top/README.md" ]; then
+        run_one "$top"
+        continue
+    fi
+    grouped=0
+    for sub in "$top"/*/; do
+        [ -d "$sub" ] || continue
+        grouped=1
+        run_one "${sub%/}"
+    done
+    if [ "$grouped" -eq 0 ]; then
+        echo "FAIL $top: neither a component (no README.md) nor a group"
+        failed="$failed $top(unknown)"
+    fi
+done
+
+if [ "$found" -eq 0 ]; then
+    echo "FAIL: no components found; is this the repository root?"
+    exit 1
+fi
+
+[ -n "$planned" ] && echo "Planned, not built:$planned"
+echo "script/$name: $ran run, $found found."
+if [ -n "$failed" ]; then
+    echo "FAILED:$failed"
+    exit 1
+fi
+exit 0

@@ -1,0 +1,37 @@
+#!/bin/sh
+# script/test: every repository check (each executable script/check-*,
+# discovered, never listed), then every component's own script/test.
+# Reports every failure together. Deliberately no "set -e".
+set -u
+cd "$(dirname "$0")/.." || exit 1
+PATH="$PWD/.tools/bin:$PATH"
+export PATH
+
+checks=0
+failed=""
+for check in script/check-*; do
+    [ -f "$check" ] || continue
+    if [ ! -x "$check" ]; then
+        echo "FAIL $check: not executable"
+        failed="$failed $check"
+        continue
+    fi
+    checks=$((checks + 1))
+    printf '=== %s\n' "$check"
+    "$check" || failed="$failed $check"
+done
+
+if [ "$checks" -eq 0 ]; then
+    echo "FAIL: no repository checks found; is this the repository root?"
+    exit 1
+fi
+
+printf '=== components\n'
+./script/each-component test || failed="$failed components"
+
+echo
+if [ -n "$failed" ]; then
+    echo "script/test FAILED:$failed"
+    exit 1
+fi
+echo "script/test passed: $checks repository checks, and every component."

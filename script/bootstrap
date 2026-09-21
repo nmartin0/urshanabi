@@ -1,0 +1,73 @@
+#!/bin/sh
+# script/bootstrap: install the pinned tools in script/tools.lock into
+# .tools/bin, refusing any download whose checksum does not match; then
+# run every component's own script/bootstrap.
+set -u
+cd "$(dirname "$0")/.." || exit 1
+
+case "$(uname -s)-$(uname -m)" in
+    Linux-x86_64)             platform=linux-x86_64 ;;  # name-ok
+    Linux-aarch64|Linux-arm64) platform=linux-aarch64 ;;  # name-ok
+    Darwin-x86_64)            platform=darwin-x86_64 ;;
+    Darwin-arm64)             platform=darwin-arm64 ;;
+    *) echo "FAIL: unsupported platform $(uname -s)-$(uname -m)"; exit 1 ;;
+esac
+
+# sha256 FILE: print FILE's SHA-256, whichever utility this system has.
+if command -v sha256sum >/dev/null 2>&1; then
+    sha256() { sha256sum "$1" | cut -d ' ' -f 1; }
+elif command -v shasum >/dev/null 2>&1; then
+    sha256() { shasum -a 256 "$1" | cut -d ' ' -f 1; }
+else
+    echo "FAIL: no SHA-256 utility is installed"; exit 1
+fi
+command -v curl >/dev/null 2>&1 || { echo "FAIL: curl is not installed"; exit 1; }  # name-ok
+
+mkdir -p .tools/bin .tools/download || exit 1
+failed=""
+installed=0
+
+while read -r tool version plat sum url member; do
+    case "$tool" in ''|'#'*) continue ;; esac
+    [ "$plat" = "$platform" ] || continue
+    if [ -x ".tools/bin/$tool" ] &&
+       [ "$(cat ".tools/bin/$tool.version" 2>/dev/null)" = "$version" ]; then
+        installed=$((installed + 1))
+        continue
+    fi
+    archive=".tools/download/${url##*/}"
+    echo "Fetching $tool $version for $platform"
+    if ! curl -sfL -o "$archive" "$url"; then  # name-ok
+        echo "FAIL $tool: download failed"; failed="$failed $tool"; continue
+    fi
+    actual=$(sha256 "$archive")
+    if [ "$actual" != "$sum" ]; then
+        echo "FAIL $tool: checksum mismatch; refusing to install"
+        rm -f "$archive"; failed="$failed $tool"; continue
+    fi
+    unpack=".tools/unpack-$tool"
+    rm -rf "$unpack" && mkdir -p "$unpack" || exit 1
+    if ! tar -xf "$archive" -C "$unpack" || [ ! -f "$unpack/$member" ]; then
+        echo "FAIL $tool: could not unpack $member"; failed="$failed $tool"; continue
+    fi
+    if mv "$unpack/$member" ".tools/bin/$tool" &&
+       chmod +x ".tools/bin/$tool" &&
+       printf '%s\n' "$version" > ".tools/bin/$tool.version"; then
+        rm -rf "$unpack"
+    else
+        echo "FAIL $tool: could not install"; failed="$failed $tool"; continue
+    fi
+    installed=$((installed + 1))
+done < script/tools.lock
+
+if [ "$installed" -eq 0 ] && [ -z "$failed" ]; then
+    echo "FAIL: script/tools.lock pins nothing for $platform"; exit 1
+fi
+echo "Tools ready: $installed for $platform."
+
+./script/each-component bootstrap || failed="$failed components"
+
+if [ -n "$failed" ]; then
+    echo "script/bootstrap FAILED:$failed"
+    exit 1
+fi

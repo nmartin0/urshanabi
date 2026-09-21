@@ -9,7 +9,7 @@ well-known microservice repositories cloned and read in full.
 Practice favours one repository when a small team owns most services and
 changes cross service boundaries, since one change and one review cover
 the whole of it; separate repositories suit genuinely independent teams
-that need hard isolation and their own release cadence. One repository
+that need hard isolation and their own release schedule. One repository
 decides where code lives, not how it ships: services still build and
 deploy independently. The cost is that one repository trades enforced
 isolation for cheap coordination, so isolation has to be checked by

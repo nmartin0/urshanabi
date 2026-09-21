@@ -1,0 +1,29 @@
+#!/bin/sh
+# script/check-shell: every POSIX shell script in the repository passes
+# the canonical shell linter in POSIX mode (RULES.md E5).
+set -u
+cd "$(dirname "$0")/.." || exit 1
+command -v shellcheck >/dev/null 2>&1 ||  # name-ok
+    { echo "FAIL: the shell linter is not installed; run script/bootstrap"; exit 1; }
+
+files=$(mktemp) || exit 1
+trap 'rm -f "$files"' EXIT
+git ls-files -co --exclude-standard > "$files" || exit 1  # name-ok
+
+count=0
+failed=""
+while IFS= read -r f; do
+    [ -f "$f" ] || continue
+    IFS= read -r first < "$f" || continue
+    [ "$first" = "#!/bin/sh" ] || continue
+    count=$((count + 1))
+    shellcheck -s sh "$f" || failed="$failed $f"  # name-ok
+done < "$files"
+
+if [ "$count" -eq 0 ]; then
+    echo "FAIL: no shell scripts found"; exit 1
+fi
+if [ -n "$failed" ]; then
+    echo "check-shell FAILED:$failed"; exit 1
+fi
+echo "check-shell: $count scripts clean."

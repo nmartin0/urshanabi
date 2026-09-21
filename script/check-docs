@@ -1,0 +1,75 @@
+#!/bin/sh
+# script/check-docs: documentation cannot drift (roadmap R-15).
+#   - every roadmap item cited anywhere exists in ROADMAP.md;
+#   - every behaviour property cited exists in conformance/BEHAVIOURS.md;
+#   - every hard rule (H1..) and standard (E1..) cited exists in RULES.md;
+#   - roadmap item numbers are unique, and every item not retired has
+#     a class, an outcome and a done-when.
+set -u
+cd "$(dirname "$0")/.." || exit 1
+
+files=$(mktemp) || exit 1
+trap 'rm -f "$files"' EXIT
+git ls-files -co --exclude-standard -- '*.md' > "$files" || exit 1  # name-ok
+
+awk -v filelist="$files" '
+function each(line, re, kind, path, ln,   s, tok) {
+    s = line
+    while (match(s, re)) {
+        tok = substr(s, RSTART, RLENGTH)
+        sub(/^[^A-Za-z]/, "", tok); sub(/[^A-Za-z0-9-]$/, "", tok)
+        refs[kind SUBSEP tok] = refs[kind SUBSEP tok] path ":" ln " "
+        s = substr(s, RSTART + RLENGTH - 1)
+    }
+}
+function finish_item() {
+    if (item != "" && !retired) {
+        if (!hascls) { print "DOCS ROADMAP.md: " item " has no class"; bad = 1 }
+        if (!hasout) { print "DOCS ROADMAP.md: " item " has no outcome"; bad = 1 }
+        if (!hasdone) { print "DOCS ROADMAP.md: " item " has no done-when"; bad = 1 }
+    }
+}
+BEGIN {
+    while ((getline l < "ROADMAP.md") > 0) {
+        if (l ~ /^### (~~)?R-[0-9]+ /) {
+            finish_item()
+            id = l; sub(/^### (~~)?/, "", id); sub(/ .*/, "", id)
+            if (id in items) { print "DOCS ROADMAP.md: " id " appears twice"; bad = 1 }
+            items[id] = 1; nitems++; item = id; retired = (l ~ /^### ~~/)
+            hascls = hasout = hasdone = 0; continue
+        }
+        if (l ~ /^# /) { finish_item(); item = "" }
+        if (l ~ /^- \*\*Class:\*\*/) hascls = 1
+        if (l ~ /^- \*\*Outcome:\*\*/) hasout = 1
+        if (l ~ /^- \*\*Done when:\*\*/) hasdone = 1
+    }
+    finish_item()
+    while ((getline l < "conformance/BEHAVIOURS.md") > 0)
+        if (match(l, /^\*\*[A-Z]+-[0-9]+\*\*/))
+            { props[substr(l, 3, RLENGTH - 4)] = 1; nprops++ }
+    while ((getline l < "RULES.md") > 0)
+        if (match(l, /^## [HE][0-9]+a?\./))
+            { rules[substr(l, 4, RLENGTH - 4)] = 1; nrules++ }
+    while ((getline path < filelist) > 0) {
+        ln = 0
+        while ((getline raw < path) > 0) {
+            ln++; line = " " raw " "
+            each(line, "[^A-Za-z0-9]R-[0-9]+[^0-9]", "item", path, ln)
+            each(line, "[^A-Za-z0-9](AUTH|HDR|SCHEMA|DENY|QUERY|ACT|APPR|OWN|ADMIN|EXTRA)-[0-9]+[^0-9]", "prop", path, ln)
+            each(line, "[^A-Za-z0-9][HE][0-9]+a?[^A-Za-z0-9]", "rule", path, ln)
+        }
+        close(path); nfiles++
+    }
+    for (k in refs) {
+        split(k, p, SUBSEP)
+        if (p[1] == "item" && !(p[2] in items)) missing = "roadmap item"
+        else if (p[1] == "prop" && !(p[2] in props)) missing = "behaviour property"
+        else if (p[1] == "rule" && !(p[2] in rules)) missing = "rule"
+        else continue
+        print "DOCS " missing " " p[2] " does not exist; cited at " refs[k]; bad = 1
+    }
+    if (nfiles == 0) { print "FAIL: no Markdown files found"; exit 1 }
+    if (nitems == 0) { print "FAIL: no roadmap items found"; exit 1 }
+    if (bad) exit 1
+    printf "check-docs: %d files; %d roadmap items, %d properties, %d rules; every citation resolves.\n", nfiles, nitems, nprops, nrules
+}'
