@@ -271,6 +271,58 @@ expensive once data or users exist.
 - **Done when:** each separately deployed service cites the
   measurement or security boundary that justified it.
 
+### R-85 Every dependency passes the selection record
+
+- **Elysium:** dependencies were chosen well but case by case; its
+  own plans still name an object store whose open-source edition has
+  since been archived. [code]
+- **Precedent:** see `RULES.md` H4a — an archived object store, a
+  mesh whose stable releases went vendor-only, and a streaming log
+  that proved source-available. [precedent]
+- **Urshanabi:** a dependency register records licence, governance,
+  exit interface, disconnection and supply chain for every dependency.
+  CI checks licences against an allowlist.
+- **Done when:** adding a dependency with a source-available licence,
+  or with no register entry, fails CI.
+
+### R-86 The build pipeline is hardened against supply-chain attack
+
+- **Elysium:** no CI, so no pipeline to attack yet. [measured]
+- **Precedent:** in 2026 a widely used model-gateway library shipped
+  credential-stealing releases after its publishing credentials were
+  taken through a compromised vulnerability scanner in its CI; the
+  malicious code ran at interpreter start-up without being imported,
+  and the source repository was never changed. [precedent]
+- **Urshanabi:** every CI action and tool is pinned by digest;
+  workflows triggered by untrusted input get no secrets; publishing
+  uses short-lived federated credentials, never stored tokens;
+  release artifacts are rebuilt and compared with source; installs
+  are audited for start-up hooks.
+- **Done when:** a pipeline change that uses an unpinned tool, or
+  exposes a secret to an untrusted trigger, fails a policy check.
+
+### R-94 Nothing leaves a cell unless enabled
+
+- **Elysium:** no telemetry of its own. [code]
+- **Precedent:** an incremental streaming database considered for
+  Urshanabi sends anonymous usage statistics by default. [precedent]
+- **Urshanabi:** no component sends anything outside a cell unless an
+  administrator enables it; dependency telemetry is switched off in
+  every shipped configuration.
+- **Done when:** a cell running under an egress capture sends
+  nothing outward over a full test cycle.
+
+### R-95 The interface component library is our own decision
+
+- **Elysium:** its interface is built on a component library
+  published by the company whose product is the precedent. [code]
+- **Urshanabi:** keep it for Phase 1 behind our own component
+  wrappers, and decide deliberately whether to replace it — a
+  competitor's library carries its visual identity and its roadmap.
+- **Owner:** [NEEDS OWNER] Keep with an exit plan, or replace.
+- **Done when:** no screen imports the library directly; every use
+  passes through our own wrappers.
+
 ---
 
 # Phase 1 — The read path
@@ -609,6 +661,58 @@ expensive once data or users exist.
   need it keep meeting their latency objective, and requests that do
   fail at their deadline with a clear error.
 
+### R-87 Model-provider credentials are isolated
+
+- **Elysium:** its model adapter held its connection details in the
+  application process. [code]
+- **Precedent:** the model-gateway compromise in R-86 was valuable
+  precisely because a gateway concentrates every provider's keys.
+  [precedent]
+- **Urshanabi:** the model gateway holds no long-lived keys; it
+  receives short-lived, scoped credentials from the secret store,
+  runs in its own process with an egress allowlist of provider
+  endpoints only, and loads no third-party plugins.
+- **Done when:** reading the gateway's environment and memory at rest
+  yields no reusable provider key, and a call to an unlisted endpoint
+  is refused.
+
+### R-88 The audit trail is tamper-evident
+
+- **Elysium:** audit records are appended to files and are complete,
+  but nothing proves after the fact that none was altered or removed.
+  [code]
+- **Precedent:** transparency logs place each entry in an append-only
+  hash tree; proving an entry is included costs a few dozen hashes at
+  any size, signed checkpoints prove the tree only grew, and an
+  external witness removes the need to trust whoever stores them. A
+  commercial gateway sells this as a licensed feature. [precedent]
+- **Urshanabi:** every audit record is added to such a tree; signed
+  checkpoints are published to a witness the customer controls.
+- **Done when:** altering or deleting any stored audit record makes
+  verification against the last checkpoint fail.
+
+### R-91 Encryption in transit and at rest, keyed per tenant
+
+- **Elysium:** loopback-only transport; files at rest unencrypted.
+  [code]
+- **Urshanabi:** every connection encrypted; every store encrypted at
+  rest with keys held in a key service; per-tenant keys once tenancy
+  is decided (R-52), so one tenant's data can be destroyed by
+  destroying its key.
+- **Done when:** a store's files read without the key service yield
+  no plaintext, and rotating a key re-encrypts without downtime.
+
+### R-92 Secrets are references, never values
+
+- **Elysium:** configuration may carry an environment-variable
+  reference instead of a password, and a missing variable refuses to
+  load, naming the field. [code]
+- **Urshanabi:** the same rule, resolved from the secret store, with
+  secrets never written to logs, errors, bundles or the published
+  manifest.
+- **Done when:** a bundle or manifest containing a secret value fails
+  validation, and a missing reference refuses to load by name.
+
 ---
 
 # Phase 2 — Writes
@@ -871,6 +975,44 @@ expensive once data or users exist.
 - **Urshanabi:** the same, with every stop requiring review.
 - **Done when:** a derived dataset inherits its inputs' compartments,
   and an unreviewed stop fails validation.
+
+### R-89 Data is published only after it passes its checks
+
+- **Elysium:** a sync writes straight to the tables readers see; a
+  drift refusal keeps the previous snapshot, but there is no staging.
+  [code]
+- **Precedent:** the established platform versions data on branches,
+  and its pipelines halt on failed health checks before downstream
+  data is affected. The table format already in use supports branches
+  natively. [precedent]
+- **Urshanabi:** each sync writes to a branch, runs its declared
+  checks there, and publishes only on success.
+- **Done when:** a sync that fails a check leaves readers on the
+  previous snapshot, and the failure is reported by name.
+
+### R-90 Identity resolution in a gold layer
+
+- **Elysium:** its fusion design places resolution upstream of the
+  ontology, makes declared joins primary, keeps inference off by
+  default with every merge approved, requires unmerging, preserves
+  field provenance, and leaves the resolved link's own classification
+  open. None of it is built. [docs]
+- **Urshanabi:** that design, built in a gold layer fed by the
+  changelog, with merges and unmerges passing through the approval
+  workflow.
+- **Done when:** a declared join produces one subject whose fields
+  keep their source classification, and an approved unmerge restores
+  both.
+
+### R-93 A source that changes shape is refused, not absorbed
+
+- **Elysium:** a column whose values no longer match the declared type
+  produces a drift report naming the column, the type and an example,
+  and the sync is refused rather than silently coerced. [code]
+- **Urshanabi:** the same, per source, with severity tiers and a
+  notification to administrators (R-58).
+- **Done when:** a source column changing type refuses the sync with a
+  report naming the column.
 
 ---
 

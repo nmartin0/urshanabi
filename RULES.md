@@ -108,6 +108,40 @@ rule we modify nothing, which keeps the question moot.
 A licence check that fails the build on any copyleft dependency
 enforces the wrong rule. Check what we modify, which is nothing.
 
+## H4a. Dependencies are chosen for licence, governance and exit.
+
+**"Open source" is not a sufficient test.** Three precedents, each
+recent: a widely used object store stopped publishing binaries,
+entered maintenance mode, and had its repository archived, leaving a
+high-severity fix unshipped in any official image. A service mesh
+stopped producing open-source stable releases; stable builds now come
+only from its commercial steward. A streaming log adopted for being a
+single binary turned out to be source-available, barring use as a
+commercial service.
+
+Before a dependency is adopted, record:
+
+- **Licence.** Anything shipped inside a cell must carry a licence
+  that meets the recognised open-source definition, because
+  disconnected installs distribute it.
+  Source-available licences are refused. Strong copyleft is accepted
+  only unmodified, in a separate process, and flagged for buyers.
+- **Governance.** Who controls the roadmap, how many organisations
+  maintain it, and whether releases are published openly. A single
+  vendor needs a written exit plan.
+- **Exit.** The dependency sits behind an interface Urshanabi owns,
+  so replacing it is a migration, not a redesign.
+- **Disconnection.** It runs with no network access, and any
+  telemetry it sends by default is switched off and verified off.
+- **Supply chain.** It is installed pinned by hash, with published
+  provenance verified where it exists.
+
+**Tools count as dependencies.** A vulnerability scanner running in
+CI was compromised and used to steal the publishing credentials of a
+widely used library, which then shipped credential-stealing releases.
+Every tool in CI is pinned by digest and kept away from publishing
+credentials.
+
 ## H5. Breaking changes need explicit authorization.
 
 A change to a persisted format, a configuration schema, a security
