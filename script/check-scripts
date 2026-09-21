@@ -259,6 +259,59 @@ contracts c8
 printf 'deps:\n  - registry.example/some/module\n' >> "$t/contracts/buf.yaml"  # name-ok
 expect_msg fail "a hosted dependency breaks a guardrail" "GUARDRAIL: no dependency on hosted" "$t/contracts/script/test"
 
+# --- check-compliance: the matrix proves itself (R-125) -------------
+bt=$(printf '\140')  # a literal backtick, for Markdown code spans
+matrix() {  # matrix NAME ROW: a tree whose matrix holds one row
+    tree "$1" check-compliance
+    mkdir -p "$t/docs"
+    printf '#!/bin/sh\nexit 0\n' > "$t/script/check-x" && chmod +x "$t/script/check-x"
+    printf 'expect fail "proven gate" true\n' > "$t/script/check-scripts"
+    printf '| ID | Control | Baselines | Roadmap | Status | Evidence |\n|---|---|---|---|---|---|\n%s\n' "$2" > "$t/docs/compliance.md"
+}
+matrix k1 "| UC-01 | A gate | SP800-53: SA-11; SP800-218: PW.8.2; 45CFR: 164.312(b) | R-01 | implemented | ${bt}script/check-x${bt}; self-test \"proven gate\" |"
+expect pass "a control with evidence passes" "$t/script/check-compliance"
+matrix k2 '| UC-01 | A gate | SP800-53: SA-11 | R-01 | implemented | — |'
+expect_msg fail "an implemented control without evidence fails" "implemented without evidence" "$t/script/check-compliance"
+matrix k3 "| UC-01 | A gate | SP800-53: SA-11 | R-01 | implemented | ${bt}script/check-missing${bt} |"
+expect_msg fail "evidence that does not exist fails" "is not an executable file" "$t/script/check-compliance"
+matrix k4 "| UC-01 | A gate | SP800-53: SA-11 | R-01 | implemented | ${bt}script/check-x${bt}; self-test \"unwritten test\" |"
+expect_msg fail "an unwritten self-test fails" "no self-test named" "$t/script/check-compliance"
+matrix k5 '| UC-01 | A gate | SP800-53: access control | R-01 | planned | — |'
+expect_msg fail "a malformed reference fails" "malformed SP800-53 reference" "$t/script/check-compliance"
+matrix k6 "| UC-01 | A gate | SP800-53: SA-11 | R-01 | planned | ${bt}script/check-x${bt} |"
+expect_msg fail "a planned control citing evidence fails" "a planned control cites no evidence" "$t/script/check-compliance"
+
+# --- check-workflows: the CI definition's own security (R-86) --------
+workflows() {
+    tree "$1" check-workflows
+    mkdir -p "$t/.github/workflows"  # name-ok
+    cp "$repo/.github/workflows/ci.yml" "$t/.github/workflows/"  # name-ok
+    cp "$repo/.github/dependabot.yml" "$t/.github/"  # name-ok
+}
+workflows w1
+expect pass "the pinned CI definition passes" "$t/script/check-workflows"
+workflows w2
+sed 's/@[0-9a-f]\{40\} # \(v[0-9.]*\)/@\1/' "$t/.github/workflows/ci.yml" > "$t/w" && mv "$t/w" "$t/.github/workflows/ci.yml"  # name-ok
+expect_msg fail "an unpinned action fails the workflow check" "unpinned" "$t/script/check-workflows"
+
+# --- check-secrets: no credential in the history (R-86) --------------
+# The planted token is assembled at run time, so no credential ever
+# appears in this repository for the secret check to find.
+secrets() {
+    tree "$1" check-secrets
+    printf 'nothing secret here\n' > "$t/notes.txt"
+    if [ "$2" = planted ]; then
+        prefix=gh; prefix="${prefix}p_"
+        body=$(printf '%s%s%s' 'Zk7Qw2Lp9Xv4' 'Rt8Nc1Hb6Jd3' 'Fg5Sy0Ea2Um7')
+        printf 'token = %s%s\n' "$prefix" "$body" > "$t/config.txt"
+    fi
+    (cd "$t" && commit_as_test secrets) || exit 1
+}
+secrets s1 clean
+expect pass "a clean history passes the secret check" "$t/script/check-secrets"
+secrets s2 planted
+expect fail "a committed credential fails the secret check" "$t/script/check-secrets"
+
 if [ -n "$failed" ]; then
     echo "check-scripts FAILED:$failed"
     exit 1

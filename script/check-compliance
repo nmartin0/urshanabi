@@ -1,0 +1,74 @@
+#!/bin/sh
+# script/check-compliance: the control matrix in docs/compliance.md
+# proves itself (roadmap R-125). Every row has a unique id, well-formed
+# baseline references, at least one roadmap item and a known status.
+# An implemented control must cite evidence that exists: an executable
+# path, and optionally the name of the self-test in script/check-scripts
+# proving that check fails when it should. A planned control cites none.
+set -u
+cd "$(dirname "$0")/.." || exit 1
+[ -f docs/compliance.md ] || { echo "FAIL: docs/compliance.md is missing"; exit 1; }
+
+awk -v selftests=script/check-scripts '
+function trim(s) { sub(/^[ \t]+/, "", s); sub(/[ \t]+$/, "", s); return s }
+function fail(msg) { print "COMPLIANCE " id ": " msg; bad = 1 }
+function ref_ok(label, item) {
+    if (label == "SP800-53")  return item ~ /^[A-Z][A-Z]-[0-9]+(\([0-9]+\))?$/
+    if (label == "SP800-218") return item ~ /^(PO|PS|PW|RV)\.[0-9]+\.[0-9]+$/
+    if (label == "45CFR")     return item ~ /^164\.3[0-9][0-9](\([a-z0-9]+\))+$/
+    if (label == "SP")        return item ~ /^800-[0-9]+[A-Z]?$/
+    return 0
+}
+BEGIN {
+    while ((getline l < selftests) > 0) tests = tests "\n" l
+    close(selftests)
+}
+/^\| UC-/ {
+    n = split($0, f, "|")
+    id = trim(f[2]); control = trim(f[3]); base = trim(f[4])
+    road = trim(f[5]); status = trim(f[6]); evid = trim(f[7])
+    rows++
+    if (id !~ /^UC-[0-9]+$/) fail("malformed id")
+    if (id in seen) fail("id appears twice")
+    seen[id] = 1
+    if (control == "") fail("no description")
+    if (road !~ /R-[0-9]+/) fail("names no roadmap item")
+    groups = split(base, g, ";")
+    if (groups == 0 || base == "") fail("no baseline references")
+    for (i = 1; i <= groups; i++) {
+        c = index(g[i], ":")
+        if (c == 0) { fail("baseline group without a label: " g[i]); continue }
+        label = trim(substr(g[i], 1, c - 1))
+        k = split(substr(g[i], c + 1), items, ",")
+        for (j = 1; j <= k; j++)
+            if (!ref_ok(label, trim(items[j])))
+                fail("malformed " label " reference: " trim(items[j]))
+    }
+    if (status == "planned") {
+        if (evid != "—") fail("a planned control cites no evidence; use —")
+        planned++
+    } else if (status == "implemented") {
+        implemented++
+        if (evid == "" || evid == "—") { fail("implemented without evidence"); next }
+        paths = 0
+        m = split(evid, e, ";")
+        for (j = 1; j <= m; j++) {
+            x = trim(e[j])
+            if (x ~ /^`[^`]+`$/) {
+                p = substr(x, 2, length(x) - 2); paths++
+                if (system("test -x \"" p "\"") != 0)
+                    fail("evidence " p " is not an executable file")
+            } else if (x ~ /^self-test "[^"]+"$/) {
+                d = substr(x, 11)
+                if (index(tests, d) == 0)
+                    fail("no self-test named " d)
+            } else fail("unreadable evidence: " x)
+        }
+        if (paths == 0) fail("evidence names no executable check")
+    } else fail("unknown status: " status)
+}
+END {
+    if (rows == 0) { print "FAIL: no controls found"; exit 1 }
+    if (bad) exit 1
+    printf "check-compliance: %d controls, %d implemented with evidence, %d planned.\n", rows, implemented, planned
+}' docs/compliance.md
