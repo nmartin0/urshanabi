@@ -1,2 +1,40 @@
-# urshanabi
-# urshanabi
+# Urshanabi
+
+Urshanabi takes an organisation's isolated data silos, cleans the data
+through pipelines, and sets an ontology on the final, curated data,
+presented to people and to agents alike.
+
+## Where to start
+
+- `RULES.md` — how work is done here, including the hard rules and the
+  engineering standards. Read it first.
+- `ROADMAP.md` — the one list of work, in the order the product
+  depends on it.
+- `AGENTS.md` — instructions for coding agents.
+- `docs/` — the architecture and the research behind it.
+- `conformance/BEHAVIOURS.md` — the properties every release must
+  keep.
+
+## Layout
+
+Every component is its own project, with its own README saying what it
+is for (`RULES.md` E2):
+
+```
+script/            top-level scripts that delegate to each project
+contracts/         every service, event and error contract
+libs/ontology/     the one ontology library
+services/<name>/   one project per deployable service
+pipelines/         pipeline definitions and transformations
+ui/                the interface and its design system
+conformance/       the behaviour specification and its suite
+e2e/               the few end-to-end journeys
+load/              load generation against the scale objectives
+deploy/            cell, bundle and release definitions
+docs/              architecture and research
+```
+
+## Status
+
+Planning is complete; construction starts with Phase 0 of the roadmap.
+Nothing here is built yet.

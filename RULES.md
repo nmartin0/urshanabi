@@ -574,7 +574,7 @@ conformance/       the behaviour specification and its suite
 e2e/               the few end-to-end journeys
 load/              load generation against the objectives (R-66)
 deploy/            cell, bundle and release definitions
-docs/              design documents
+docs/              design documents and the research behind them
 ```
 
 **`AGENTS.md`** at the root tells coding agents how to work here and
