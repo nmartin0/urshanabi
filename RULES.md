@@ -37,6 +37,11 @@ carries over; Elysium's design does not. Where the mistake
 is instructive it is named, because a rule without its reason gets
 worked around the first time it is inconvenient.
 
+Part three is the engineering standards: how code is chosen,
+arranged, checked and tested. Like part one, they bind every change;
+unlike part one, each is enforced by a gate in CI rather than by
+review alone.
+
 Keep this file precise rather than long. Instructions that restate
 what a reader can learn from the code make work worse, not better.
 
@@ -65,7 +70,10 @@ name? If not, the description is not finished.
 **Where a name is unavoidable, it appears only there.** Dependency
 manifests, lockfiles and import statements must name what they
 depend on; that is the one place a name may appear, and it is not
-repeated in any comment beside it.
+repeated in any comment beside it. A development tool's own
+configuration file counts as a manifest, since the tool fixes its
+name and location; the file carries settings, never commentary about
+the tool.
 
 **Provisional, pending the owner's confirmation:** generic technical
 vocabulary and published protocol designations — HTTP, TLS, SQL,
@@ -463,3 +471,131 @@ There is exactly one backlog. Several planning documents each keeping
 their own list drift apart; in Elysium an entry marked "blocking
 everything below it" had been fixed weeks earlier and no list said
 so. Design documents hold reasoning; the backlog holds the work.
+
+---
+
+# Part three: engineering standards
+
+How code is written, arranged, checked and tested. Each standard was
+researched against current practice (H7). Named tool choices live
+only in dependency manifests and tool configuration (H1).
+
+## E1. Standard library first, then the canonical library, then further.
+
+**Use the language's standard library and official toolchain
+whenever they do the job.** Only when they do not, take the
+canonical third-party library: the one the language's community
+treats as the default, widely adopted and actively maintained, and
+preferably governed by a foundation or community rather than one
+company. It must still pass H4a.
+
+**Only when neither exists, or the canonical choice fails H4a,
+compare non-canonical libraries with writing our own.** Record the
+comparison with the decision. When the options are roughly balanced,
+the owner decides (H8).
+
+**Never write our own** cryptography, TLS, authentication protocols,
+random numbers for security, or parsers of untrusted formats where a
+vetted library exists. Home-made security code fails in ways its
+tests do not show.
+
+Why: every dependency is attack surface, maintenance and exit risk.
+A widely used library's credential-stealing releases in 2026 reached
+its users through the supply chain (H4a); the standard library and
+the canonical choice carry the least of that risk.
+
+*Test:* every entry in the dependency register records which rung it
+sits on and why a lower rung would not do.
+
+## E2. One repository; each language's own tools.
+
+**Urshanabi lives in one repository.** Practice favours one
+repository when code is shared and changes are coordinated, and
+separate repositories when teams are genuinely independent. Here the
+contracts are shared, one owner coordinates, and changes routinely
+span services.
+
+**Each language builds with its own official toolchain, in one
+workspace per language at the root**, so each language has exactly
+one lockfile. A thin task runner calls the native tools; one command
+runs every gate (E3) locally exactly as CI runs it. A heavyweight
+multi-language build system is adopted only if measurement shows the
+native tools cannot keep builds fast, because its setup cost is
+justified only at very large scale.
+
+**Layout:**
+
+- `contracts/` — every service, event and error contract; the single
+  source from which clients are generated.
+- `conformance/` — the behaviour specification and its suite.
+- `services/<name>/` — one directory per deployable service.
+- `libs/<language>/` — shared libraries, including the one ontology
+  library (roadmap R-51).
+- `pipelines/` — pipeline definitions in our own format, and their
+  transformations.
+- `ui/` — the interface and its design system.
+- `deploy/` — cell, bundle and release definitions.
+- `docs/` — design documents; `RULES.md` and `ROADMAP.md` stay at
+  the root.
+
+## E3. Every language passes the same six gates.
+
+1. **Format** — the language's official formatter; unformatted code
+   fails.
+2. **Types** — the compiler or type checker at its strictest setting.
+   Where typing is gradual, the canonical checker in strict mode is
+   the authoritative gate, whatever faster checker an editor uses,
+   and unannotated code fails.
+3. **Lint** — the canonical linter, warnings treated as errors, its
+   policy declared once per workspace in the manifest rather than
+   scattered through files or command lines.
+4. **Dead code** — unused code, exports and dependencies fail the
+   build.
+5. **Audit** — known vulnerabilities and licences (H4a) are checked
+   on every build.
+6. **Test** — the language's test runner, with race or sanitizer
+   checks wherever the language has them.
+
+**Per language:**
+
+- **Systems language.** Unsafe code is forbidden except in named,
+  reviewed modules. No panicking shortcut in non-test code: a panic
+  in a service is a crash an attacker can trigger. The minimum
+  compiler version is pinned. Every parser of external input has a
+  fuzz target. Mutation testing runs periodically on the core
+  library to prove the tests catch real faults.
+- **Services language.** Every test run uses the race detector. No
+  error is ever left unchecked. The standard library comes first for
+  HTTP, logging, TLS, JSON, testing and fuzzing.
+- **Agent and pipeline language.** Typed throughout. Installs are
+  locked and hash-pinned.
+- **Frontend language.** The strictest compiler options; no escape
+  hatch to untyped values; unhandled promises are errors.
+- **SQL** is linted and formatted like any other code.
+- **Contracts** are linted, formatted and checked for breaking
+  changes (roadmap R-06).
+
+## E4. Test in layers, weighted toward the boundaries.
+
+The established strategy for microservices has five layers; current
+practice weights them toward integration, because most microservice
+faults occur where services meet.
+
+1. **Unit** — pure logic, fast; property-based wherever inputs are
+   wide.
+2. **Integration** — each adapter against the real dependency in an
+   ephemeral container, never against a mock of infrastructure we
+   run ourselves.
+3. **Component** — one whole service, its collaborators replaced by
+   test doubles that speak the real contract.
+4. **Contract** — consumer-driven expectations verified in the
+   provider's build (R-78), with schema breaking-change checks (R-06).
+5. **End-to-end** — few, covering only critical journeys, in an
+   ephemeral environment per change. Never the first line of defence.
+
+Alongside the layers: the black-box conformance suite (R-07); fuzzing
+of every external input; mutation testing; fault injection for
+deadlines, breakers and retries (R-83); load against the scale
+objectives (R-66); security tests for every denial property; and the
+agent evaluations (R-28, R-72). Every test declares its prerequisites
+and skips by name when one is missing (R-02).

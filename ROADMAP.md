@@ -462,6 +462,32 @@ any commercial system needs, whatever its category.
 - **Done when:** every control in the matrix cites a test that passes
   in CI, and a control without a test fails the build.
 
+### R-127 The engineering standards are enforced from the first commit
+
+- **Class:** foundation
+- **Outcome:** `RULES.md` part three is enforced in CI from the first
+  commit: every dependency records its rung on the standard-library
+  ladder (E1); the repository follows the one-repository layout with
+  one workspace per language (E2); every language passes the six gates
+  (E3); and tests are written in the five layers, weighted toward
+  integration and contracts (E4). One command runs every gate locally
+  exactly as CI does.
+- **Practice and precedent:** repositories are kept whole when code is
+  shared and changes coordinated; heavyweight multi-language build
+  systems pay off only at very large scale. The established
+  microservice testing strategy has unit, integration, component,
+  contract and end-to-end layers, and current practice weights
+  integration most because faults cluster at service boundaries.
+  [precedent]
+- **Learned from Elysium:** its lint script had five gates and nothing
+  ran it on push. One gate's failure was silently discarded: the
+  lock-file check set a variable the script never read, so the script
+  exited successfully while that gate failed. A test that deliberately
+  breaks each gate would have caught it. [measured]
+- **Done when:** a deliberate violation of each gate, in each language
+  present, fails CI; and a dependency without a recorded rung fails
+  the build.
+
 ---
 
 # Phase 1 — Data foundation: sourcing, pipelines, storage
