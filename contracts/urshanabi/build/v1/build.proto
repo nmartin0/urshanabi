@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package urshanabi.build.v1;
+
+import "google/protobuf/timestamp.proto"; // name-ok
+
+// BuildService reports which builds are running (roadmap R-121). The
+// gateway answers with its own build and those of the services it
+// calls, so one request shows every running component's identity.
+service BuildService {
+  // GetBuildInfo returns the build identity of this component and of
+  // every component it reports for.
+  rpc GetBuildInfo(GetBuildInfoRequest) returns (GetBuildInfoResponse);
+}
+
+// GetBuildInfoRequest takes no arguments.
+message GetBuildInfoRequest {}
+
+// GetBuildInfoResponse lists one entry per component, the answering
+// component first.
+message GetBuildInfoResponse {
+  repeated BuildInfo builds = 1;
+}
+
+// BuildInfo identifies one running build. It holds nothing from the
+// time of the build itself, so two builds of the same source produce
+// the same identity.
+message BuildInfo {
+  // The component's directory name, such as "gateway".
+  string component = 1;
+  // The released version, or "development" for an unreleased build.
+  string version = 2;
+  // The full revision of the source the build came from.
+  string source_revision = 3;
+  // When that revision was committed, in UTC (R-128).
+  google.protobuf.Timestamp source_committed_at = 4; // name-ok
+  // The SHA-256 of the build artifact, as published to the
+  // transparency log (R-121).
+  string artifact_sha256 = 5;
+}
