@@ -1,8 +1,12 @@
 # Deployment
 
-Cell, bundle and release definitions for hosted, customer-cloud and
-disconnected installations, and the mesh configuration for each kind
-of cell.
+The release's deployment package, which runs a cell on any conformant
+container orchestrator, and the live configuration of every hosted
+cell: which release it runs, its sizing and its secret references
+(roadmap R-136, R-137). Secrets are referenced, never stored (R-92).
+While the repository is public (R-17), cells are named by opaque
+identifiers, and no customer's name, endpoint, sizing or other
+identifying detail may appear here.
 
 - **Language role:** declarative configuration
 - **Holds:** nothing; secrets are references (R-92)

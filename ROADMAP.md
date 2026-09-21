@@ -246,6 +246,59 @@ any commercial system needs, whatever its category.
 - **Done when:** a reboot followed by one command restores a working
   stack.
 
+### R-135 Every service ships as a verifiable container image
+
+- **Class:** foundation
+- **Status:** planned
+- **Outcome:** each service's container build lives in its own
+  directory (`RULES.md` E2) and produces an image in the open container
+  image format: built in stages, on a minimal base pinned by digest,
+  running as a non-root user with no shell (R-120). Builds are
+  reproducible, stamped with the source commit's time rather than the
+  build time (R-121); every image carries a bill of materials and a
+  signature, published to the transparency log. Clusters run images with
+  the standard foundation-governed container runtime, so no
+  image-building tool is installed on servers.
+- **Practice and precedent:** every microservice repository inspected
+  keeps each service's container build beside its source. Images in the
+  open format run on any conformant runtime, and reproducible, signed
+  images with bills of materials are standard supply-chain practice.
+  [precedent]
+- **Learned from Elysium:** shipped no container images. [code]
+- **Done when:** two builds of the same commit produce identical
+  images, and an image without a valid signature and bill of materials
+  is refused by the cluster.
+
+### R-136 Cells run on any conformant orchestrator, tested on one reference
+
+- **Class:** foundation
+- **Status:** planned
+- **Outcome:** Urshanabi assumes only a certified, conformant
+  container orchestrator, so it runs on any conformant distribution.
+  Each cell is one cluster, dedicated to one customer while hosted
+  (R-52); the metadata-only control plane runs in a cluster of its own.
+  Traffic enters through the orchestrator's standard gateway interface.
+  CI and developer machines run a lightweight distribution, and the
+  product is released only after passing on the reference distribution.
+- **Practice and precedent:** a security-hardened distribution of the
+  orchestrator ships defaults that pass the CIS benchmark, enables FIPS
+  140-2 validated cryptography, supports SELinux and air-gapped
+  installation, and stays closely aligned with upstream; its lightweight
+  sibling, a foundation sandbox project since 2020, suits edge sites,
+  development and CI. The most widely used ingress controller retired in
+  March 2026, and distributions moved to the standard gateway interface.
+  [precedent]
+- **Learned from Elysium:** ran as a single process, with no
+  orchestrator. [code]
+- **Decision:** the reference and production distribution is the
+  security-hardened, government-oriented one; the lightweight sibling
+  runs on developer machines and in CI (owner, 2026-09-21). It is one
+  company's, contained because the product assumes only conformance, so
+  changing distribution is an operations change, not a product change.
+- **Done when:** the end-to-end suite passes on the reference
+  distribution in its hardened profile and on the lightweight one, and a
+  release that fails either is not published.
+
 ### R-13 Fixtures with volume
 
 - **Class:** foundation
@@ -2116,6 +2169,42 @@ one deployment into a product.
   waits for customer-cloud cells.
 - **Done when:** the decision is recorded here, with the models that
   are out of scope named.
+
+### R-137 All deployment material lives in this repository
+
+- **Class:** parity
+- **Status:** planned
+- **Outcome:** each service's container build, the release's
+  deployment package for any conformant cluster, and the live
+  configuration of every hosted cell — which release it runs, its sizing
+  and its secret references — live in this repository, under `deploy/`.
+  The concerns that usually separate them are handled here instead:
+  configuration-only changes do not trigger rebuilds; the
+  configuration's history is read by path; changes to live configuration
+  require a second person's approval; and automated updates to it are
+  confined to its own path, so they cannot trigger build loops. Secrets
+  are never stored, only referenced (R-92). While the repository is
+  public (R-17), cells are named by opaque identifiers, and no
+  customer's name, endpoint, sizing or other identifying detail appears
+  in it.
+- **Practice and precedent:** the leading continuous-deployment tool's
+  documentation highly recommends a separate repository for deployment
+  configuration: to change configuration without rebuilding, to keep a
+  clean audit trail, to deploy services from several repositories as one
+  unit, to separate production access from code access, and to avoid
+  automated commits triggering build loops. [precedent]
+- **Learned from Elysium:** had no deployment configuration. [code]
+- **Owner:** [NEEDS OWNER] whether customer-identifying configuration
+  will be kept by making the repository private before the first hosted
+  customer, or by keeping the mapping from opaque cell identifiers to
+  customers outside it.
+- **Decision:** all deployment material stays in this repository
+  (owner, 2026-09-21), rather than splitting live hosted configuration
+  into a separate repository as the precedent recommends.
+- **Done when:** a configuration-only change deploys without a
+  rebuild, a change to live configuration without a second approval is
+  refused, and a check fails if any file under `deploy/` holds a
+  customer-identifying detail while the repository is public.
 
 ### R-73 Metering, quotas and visible cost
 

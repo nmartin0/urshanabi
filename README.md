@@ -30,7 +30,7 @@ ui/                the interface and its design system
 conformance/       the behaviour specification and its suite
 e2e/               the few end-to-end journeys
 load/              load generation against the scale objectives
-deploy/            cell, bundle and release definitions
+deploy/            the release package and hosted cells' configuration
 docs/              architecture and research
 ```
 
