@@ -47,8 +47,23 @@ for gen in buf.gen.yaml buf.gen.yml; do  # name-ok
     fi
 done
 
-# Breaking changes.
+# Breaking changes. A base given explicitly must exist: a comparison
+# against a missing commit must never pass silently. The one exception
+# is the all-zero commit sent for a newly pushed branch, which means
+# there is no earlier commit to compare with.
 base=${CONTRACTS_BREAKING_BASE:-}
+case "$base" in
+    *[!0]*) given=1 ;;
+    ?*) echo "No earlier commit for a new branch; nothing to compare."
+        base=none; given=0 ;;
+    *) given=0 ;;
+esac
+if [ "$given" -eq 1 ] &&
+   ! git -C "$root" cat-file -e "$base^{commit}" 2>/dev/null; then  # name-ok
+    echo "FAIL: the breaking-change base $base is not a commit here"
+    failed="$failed base"
+    base=none
+fi
 if [ -z "$base" ]; then
     if ! git diff --quiet HEAD -- . 2>/dev/null ||  # name-ok
        [ -n "$(git ls-files -o --exclude-standard -- .)" ]; then  # name-ok
@@ -59,7 +74,9 @@ if [ -z "$base" ]; then
 fi
 earlier=$(git -C "$root" ls-tree -r --name-only "$base" -- contracts 2>/dev/null |  # name-ok
     grep -c '\.proto$')
-if [ "${earlier:-0}" -gt 0 ]; then
+if [ "$base" = none ]; then
+    :
+elif [ "${earlier:-0}" -gt 0 ]; then
     echo "Comparing the contracts with $base"
     buf breaking . --against "$root/.git#ref=$base,subdir=contracts" ||  # name-ok
         failed="$failed breaking"

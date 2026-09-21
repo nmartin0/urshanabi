@@ -6,6 +6,9 @@
 set -u
 cd "$(dirname "$0")/.." || exit 1
 repo=$PWD
+# The self-tests control their own environment: nothing from the run
+# that invokes them may steer the scripts under test. CI sets this one.
+unset CONTRACTS_BREAKING_BASE
 PATH="$repo/.tools/bin:$PATH"
 export PATH
 
@@ -234,6 +237,12 @@ commit_all
 first=$(cd "$t" && git rev-list --max-parents=0 HEAD)  # name-ok
 expect_msg fail "a removal is caught against a given base" "contracts FAILED: breaking" \
     env CONTRACTS_BREAKING_BASE="$first" "$t/contracts/script/test"
+contracts c9
+expect_msg fail "a missing explicit base fails, never skips" "is not a commit here" \
+    env CONTRACTS_BREAKING_BASE=1234567 "$t/contracts/script/test"
+contracts c10
+expect_msg pass "the new-branch all-zero base is a clean skip" "No earlier commit for a new branch" \
+    env CONTRACTS_BREAKING_BASE=0000000000000000000000000000000000000000 "$t/contracts/script/test"
 contracts c6
 sed -i.bak 's/syntax = "proto3";/syntax = "proto2";/' "$t/$proto" && rm -f "$t/$proto.bak"
 expect_msg fail "older syntax breaks a guardrail" "GUARDRAIL.*version 3 syntax" "$t/contracts/script/test"
