@@ -2,12 +2,38 @@
 
 How work is done on Urshanabi, by every person and every agent.
 
+---
+
+# Purpose: what Urshanabi is, and what it is not
+
+**Urshanabi takes an organisation's isolated data silos, cleans the
+data through pipelines, and sets an ontology on the final, distilled
+data.** The ontology is presented to people, and to agents, alike.
+
+**It belongs to an emerging category.** One established platform is
+the first instance and the leader, and the category is about to fill
+with systems of this kind. Urshanabi is one of them, built to its own
+design.
+
+**It is not a copy.** Not of the leading platform, and not of Elysium,
+the owner's earlier prototype. Neither one's architecture or
+limitations constrain Urshanabi. They are inspiration and a loose map:
+evidence of what the category needs, and of what went wrong along the
+way.
+
+**Every stage follows industry-standard practice.** Data sourcing,
+pipelines, storage, the ontology, serving, security, service
+architecture, delivery: for each, the question is what current
+practice and research establish as best, not what the leader or
+Elysium happened to do.
+
 Part one is hard rules. They have no exceptions unless the owner
 authorizes one explicitly, and that authorization is recorded where
 the exception lives.
 
-Part two is the working method, carried over from Elysium, where
-every rule was learned by getting something wrong. Where the mistake
+Part two is the working method, learned while building Elysium,
+where every rule was learned by getting something wrong. The method
+carries over; Elysium's design does not. Where the mistake
 is instructive it is named, because a rule without its reason gets
 worked around the first time it is inconvenient.
 
@@ -177,6 +203,32 @@ true.
   existed.
 - **A display filter is not a security decision.** The interface may
   hide what the server already refused; it is never the only check.
+
+---
+
+## H7. Decide from industry-standard practice; never improvise.
+
+**When a choice is uncertain, research it before making it.** Look up
+what established practice and current research say for that stage —
+data sourcing, pipelines, storage, service architecture, security,
+delivery — and record the evidence with the decision, described
+without names (H1, H3).
+
+A plausible design made up on the spot is not a decision. This
+project has already corrected one: pipeline scheduling had been given
+to the durable engine that runs approvals, when industry practice
+treats data orchestration and durable execution as different
+categories that are routinely confused.
+
+## H8. Close calls go to the owner.
+
+**When the research leaves the options roughly balanced, stop and ask
+the owner.** Present the options, the evidence for each, the costs,
+and a recommendation if there is one. Do not choose, and do not build
+on a choice that has not been made.
+
+A close call recorded in the roadmap is marked [NEEDS OWNER] and
+stays open until the owner decides.
 
 ---
 
