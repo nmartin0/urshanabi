@@ -347,6 +347,30 @@ expect_msg fail "an objective without a number fails" "needs a number and a unit
 scale q4 "| SO-01 | Opening a record | at most 100 ms | R-70 | tested | ${bt}load/missing${bt} |"
 expect_msg fail "a missing load test fails" "is not executable" "$t/script/check-scale"
 
+# --- cibuild and test-integration: the scripts CI runs --------------
+ci() {  # ci NAME FAILING-STEP: stub steps, one of which may fail
+    tree "$1" cibuild
+    for step in bootstrap test test-integration; do
+        if [ "$step" = "$2" ]; then
+            printf '#!/bin/sh\nexit 1\n' > "$t/script/$step"
+        else
+            printf '#!/bin/sh\ntouch "%s/ran-%s"\n' "$t" "$step" > "$t/script/$step"
+        fi
+        chmod +x "$t/script/$step"
+    done
+}
+ci i1 none
+expect pass "cibuild passes when every step passes" "$t/script/cibuild"
+ci i2 test
+expect_msg fail "cibuild fails when a step fails" "script/cibuild FAILED: test" "$t/script/cibuild"
+if [ -f "$t/ran-test-integration" ]; then passed=$((passed + 1))
+else failed="$failed [cibuild runs every step]"; echo "SELF-TEST FAILED: cibuild runs every step"; fi
+tree i3 test-integration each-component
+mkdir -p "$t/contracts/script" && printf '# c\n' > "$t/contracts/README.md"
+printf '#!/bin/sh\nexit 1\n' > "$t/contracts/script/test-integration"
+chmod +x "$t/contracts/script/test-integration"
+expect fail "a failing integration test fails test-integration" "$t/script/test-integration"
+
 if [ -n "$failed" ]; then
     echo "check-scripts FAILED:$failed"
     exit 1

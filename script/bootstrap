@@ -23,6 +23,10 @@ else
 fi
 command -v curl >/dev/null 2>&1 || { echo "FAIL: curl is not installed"; exit 1; }  # name-ok
 
+# fetch FILE URL: download over HTTPS or from a local file; every
+# redirect must stay on HTTPS, with TLS 1.2 or newer.
+fetch() { curl -sfL --proto '=https,file' --proto-redir '=https' --tlsv1.2 -o "$1" "$2"; }  # name-ok
+
 mkdir -p .tools/bin .tools/download || exit 1
 failed=""
 installed=0
@@ -37,7 +41,7 @@ while read -r tool version plat sum url member; do
     fi
     archive=".tools/download/${url##*/}"
     echo "Fetching $tool $version for $platform"
-    if ! curl -sfL -o "$archive" "$url"; then  # name-ok
+    if ! fetch "$archive" "$url"; then
         echo "FAIL $tool: download failed"; failed="$failed $tool"; continue
     fi
     actual=$(sha256 "$archive")
