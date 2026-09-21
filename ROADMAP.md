@@ -959,6 +959,13 @@ then audit and operations.
   and the write service; the control plane calls the compiler rather
   than re-implementing it, so no two components can disagree about what
   the ontology means.
+- **Decision:** the ontology is authored in TOML, one small file per
+  type, link, action and metric, with one translation catalogue per
+  language (owner, 2026-09-21). Only the shared library parses it, and
+  in the systems language TOML has exactly one canonical, maintained
+  library, while YAML's libraries are fragmented across individual
+  maintainers after the long-standing one was archived in 2024
+  (`RULES.md` E1). The format is specified in `docs/ontology-format.md`.
 - **Done when:** the control plane refuses an unsigned bundle; the
   published manifest contains nothing outside its allow-list; and a
   check fails if any component other than the shared library parses
@@ -1522,10 +1529,23 @@ then audit and operations.
 - **Outcome:** its own format is documented openly, and exports to the
   open specification.
 - **Practice and precedent:** lock-in is the most consistent criticism
-  of the established platform. An open, vendor-neutral semantic-model
-  specification was published in 2026 under a permissive licence and has
-  entered an open-source foundation's incubator. [precedent]
+  of the established platform. The open, vendor-neutral semantic-model
+  specification published in January 2026 under a permissive licence was
+  accepted into a software foundation's incubator in July 2026 and
+  renamed. Its core specification covers datasets, metrics, dimensions
+  and relationships, with an extension mechanism for what core cannot
+  express; its ontology specification, still a development version, is
+  fact-oriented, with entity and value types related through verbalised
+  relationships; and it carries no security model, warning that an
+  exported model is not a security boundary. [precedent]
 - **Learned from Elysium:** its ontology is a bespoke format. [code]
+- **Decision:** Urshanabi keeps its own format, specified openly in
+  `docs/ontology-format.md`, and exports to that specification: object
+  types as entity types identified by their primary keys, properties as
+  relationships to value types, links as relationships between entity
+  types, and metrics as its metrics. Actions, edit rules, freshness and
+  translations travel in its extension mechanism; security labels are
+  never exported.
 - **Done when:** an export-then-import round trip preserves types,
   links and metric definitions.
 

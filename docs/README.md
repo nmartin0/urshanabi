@@ -5,6 +5,8 @@ holds the work; these files hold the reasoning. Where the two disagree,
 the roadmap is right and the document here is stale.
 
 - `architecture.md` — what Urshanabi is made of and how the parts fit.
+- `ontology-format.md` — how the ontology is written down: the open
+  specification of Urshanabi's own format.
 - `compliance.md` — every control mapped to the baselines buyers use,
   each implemented one proved by a test.
 - `writers.md` — the single writer of every store, and how the store

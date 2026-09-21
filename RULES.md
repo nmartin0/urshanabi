@@ -94,14 +94,14 @@ written; none had reached the repository, but only because the
 documents had been written carefully.
 
 **Provisional, pending the owner's confirmation:** generic technical
-vocabulary and published protocol designations — HTTP, TLS, SQL,
-JSON, YAML, OIDC, SAML, SCIM, RFC numbers — are treated as vocabulary
+vocabulary and published protocol designations — HTTP, TLS, SQL, JSON,
+YAML, TOML, OIDC, SAML, SCIM, RFC numbers — are treated as vocabulary
 rather than product names. So are the designations of standards and
 regulations that buyers require us to meet — control-catalogue and
 publication numbers such as SP 800-53, ISO/IEC numbers, and legal
-citations such as 45 CFR Part 164 — because compliance cannot be
-shown without citing them. The bodies that issue them are described,
-not named.
+citations such as 45 CFR Part 164 — because compliance cannot be shown
+without citing them. The bodies that issue them are described, not
+named.
 
 **Carrying anything over from Elysium means scrubbing it on the way.**
 Elysium's documents and comments name companies and products freely.
