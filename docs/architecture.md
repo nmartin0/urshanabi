@@ -118,15 +118,40 @@ conflict (`RULES.md` E2).
   priority — and every field shows which source won (R-102).
 - **Every change states the version it was based on**; a missing or
   stale version is refused (R-103).
-- **One writer per table**, with the table format's own conflict check
-  as the guarantee (R-104); non-append table writes go through the
-  format's reference implementation (R-110).
+- **One writer per store**, named in `docs/writers.md` and enforced by
+  the store itself (R-79); for tables, the table format's own conflict
+  check is the final guarantee (R-104), and non-append table writes use
+  the format's reference implementation (R-110).
 - **The index never goes backwards**: writes carry the source's sequence
   number and older ones are rejected (R-105).
 - **Every state-changing request can be retried** without being applied
   twice (R-106).
 
-## 6. Components, by role
+## 6. Time, languages, scale and the ontology's own form
+
+- **UTC is the one timezone.** Every instant is stored, processed and
+  transmitted in UTC; only the edge converts to a reader's local time. A
+  future civil time, such as an automation every day at 9am in one city,
+  keeps its local time and zone, with its instant recomputed when
+  timezone rules change, and calendar dates stay dates (R-128). Tests
+  run under three timezones to prove no code reads the host's (R-14).
+- **Every word is translatable.** Interface text lives in message
+  catalogues, English, Spanish and Portuguese first; the ontology's own
+  names are translated once and inherited by every screen and agent;
+  search works across languages; agents answer in the reader's language
+  (R-129 to R-132).
+- **Proven at the largest scale.** The first release is proven against
+  the largest enterprises and governments: at least 50 billion objects,
+  20,000 people at once and 1,000 workflows a second per cell, with a
+  record opened within 100 ms at the 95th percentile. Each objective is
+  in `docs/scale.md`, awaiting or citing its load test (R-66).
+- **The ontology is authored in TOML**, one small file per type, link,
+  action and metric, with one translation catalogue per language, parsed
+  only by the shared ontology library. Its open specification is
+  `docs/ontology-format.md`, and it exports to the open semantic-model
+  specification, never exporting security labels (R-51, R-74).
+
+## 7. Components, by role
 
 | Role | Decision | Governance |
 |---|---|---|
@@ -141,11 +166,13 @@ conflict (`RULES.md` E2).
 | Serving engine | Updated in place, immediately searchable, hybrid retrieval and ranking | One company; exit is a reindex (owner's decision) |
 | Policy engine | Analysable and formally verified | Foundation |
 | Interface | Our own design system on accessible primitives | Ours (owner's decision) |
+| Service contracts | A schema-first binary interface language at its version 3 syntax, its standard RPC protocol between services, and that protocol's browser-compatible variant at the gateway, with portability guardrails | Steered by one company, the protocol hosted by a foundation; accepted with guardrails (owner's decision) |
+| Ontology authoring | TOML, parsed only by the shared ontology library | An open format (owner's decision) |
 
 The named register mapping each role to its product lives outside the
 repository (`docs/README.md`).
 
-## 7. Federation
+## 8. Federation
 
 Designed now, built later (Phase 7). **Peering** shares selected objects
 between installations over the open dataspace protocol being
@@ -155,7 +182,7 @@ place, opt-in per source, with a stated purpose on every request and
 identity-proofed users; results are marked unverified until promoted
 through the pipelines (R-118).
 
-## 8. Verification
+## 9. Verification
 
 - **Properties**: `conformance/BEHAVIOURS.md`, checked black-box through
   one driver per system (R-07).
@@ -169,7 +196,7 @@ through the pipelines (R-118).
 - **Compliance**: a control matrix mapping every control to its test
   (R-125).
 
-## 9. Costs and risks
+## 10. Costs and risks
 
 - **Operational surface**: a relational store, an expiring key-value
   store, an event log, a data orchestrator and a durable workflow

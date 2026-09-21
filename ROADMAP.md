@@ -1618,9 +1618,9 @@ protocol, and through Urshanabi's own agent.
 - **Class:** parity
 - **Outcome:** Urshanabi's agent can be reached by, and can delegate
   to, other agents through the foundation-governed agent-to-agent
-  protocol, always as the user and within the agent envelope (section
-  3.5 of the architecture); tools and data stay on the agent-tool
-  protocol (R-99).
+  protocol, always as the user and within the agent envelope (the
+  security model in `docs/architecture.md`); tools and data stay on the
+  agent-tool protocol (R-99).
 - **Practice and precedent:** the agent-to-agent protocol reached
   production use across the major clouds with over 150 supporting
   organisations in its first year, and is described as complementary to
