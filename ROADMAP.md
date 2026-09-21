@@ -24,6 +24,8 @@ depends on is done.
   be and those measurements were not repeated.
 - **fixed late** — added to any tag when Elysium had the flaw and
   later fixed it.
+- **[precedent]** — established practice elsewhere, described by what
+  it does. Never named, per `RULES.md` H1.
 
 **Excluded or narrowed after checking.** Three flaws in Elysium's own
 documents were stale: log rotation is listed as missing but ships as
@@ -196,6 +198,21 @@ expensive once data or users exist.
   its repository is publicly readable. [measured]
 - **Urshanabi:** private from the first commit, or licensed
   deliberately. An owner decision.
+
+### R-66 Stated scale objectives, each with a load test
+
+- **Elysium:** no scale target anywhere. Before this item, the
+  largest number in this roadmap was a 10-million-row sync. [measured]
+- **Precedent:** an established ontology platform publishes its
+  limits per object type: tens of billions of objects per type, a
+  10-million-object ceiling on a link traversal's result, 10,000
+  objects per edit, and metered indexing throughput. [precedent]
+- **Urshanabi:** written objectives for objects per type, query
+  latency at the 95th percentile, indexing lag, rows synced per hour
+  and cell throughput. Every later scale item is measured against
+  them.
+- **Done when:** a change that breaks an objective fails a scheduled
+  load run.
 
 ---
 
@@ -388,6 +405,118 @@ expensive once data or users exist.
 - **Done when:** three sources with a 100 ms delay each answer in
   about 100 ms, not 300 ms.
 
+### R-67 Validation errors never reflect request bodies
+
+- **Elysium:** an unauthenticated login missing its username returns
+  the submitted password verbatim in the error body, because the
+  default validation error includes the offending input. [measured]
+- **Urshanabi:** one error shape for every route; no submitted value
+  is ever echoed.
+- **Done when:** a request carrying a secret-shaped value in any
+  field fails validation, and the value appears nowhere in the
+  response or the logs.
+
+### R-68 No signal derived from hidden rows
+
+- **Elysium:** a user who can see no transactions is told the scan
+  hit its ceiling, on both read paths, because the ceiling bounds a
+  scan taken before the security check for link-secured types.
+  [measured]
+- **Precedent:** a published study found row-level security leaks the
+  size of hidden row sets through timing when the caller's condition
+  runs first. A mature database enforces the security condition
+  first, except for operators certified unable to leak. A search
+  product documents that post-filtered counts overstate what is
+  visible. [precedent]
+- **Urshanabi:** the security condition runs first, with a reviewed
+  list of operators allowed ahead of it; counts, totals and
+  truncation come only from rows that passed it.
+- **Done when:** DENY-09 passes with a fixture above the ceiling, and
+  response time does not measurably separate a query over many hidden
+  rows from one over none.
+
+### R-69 Execution tiers with published limits
+
+- **Elysium:** two tiers, observed working. Conditions a source
+  declares it can evaluate are pushed to it; the rest run in process;
+  a 10,000-row scan ceiling bounds both. No tier beyond one process.
+  The per-source capability declaration is worth carrying over.
+  [measured]
+- **Precedent:** simple filters and aggregations push down to
+  storage, sets up to 100,000 run in memory, and larger work moves to
+  distributed compute, with published ceilings at each step.
+  [precedent]
+- **Urshanabi:** the tier is chosen by estimated size, every limit is
+  published, and work past the last limit is refused by name.
+- **Done when:** the same query answered in each tier returns
+  identical results, and a query past the last limit is refused with
+  a named reason.
+
+### R-70 An indexed object layer — PROPOSED, AWAITING THE OWNER
+
+- **Elysium:** meaning is resolved at read time and nothing is
+  indexed; its transform stage deliberately materialises no
+  per-type tables. Its identifier-keyed changelog and per-generation
+  snapshot pinning are real, working inputs an index would consume.
+  [code]
+- **Precedent:** an established platform separates indexing from
+  querying so each scales horizontally. Enterprise search names the
+  choice: early binding indexes permissions with content; late
+  binding checks each result at query time; systems combine them,
+  falling back to late binding when early cannot express a rule. An
+  authorization system at very large scale answers stale-permission
+  exposure with a freshness token: check against data at least as
+  fresh as a given moment. Incrementally maintained views run in
+  production, with modes where a read waits for changes to arrive.
+  [precedent]
+- **Urshanabi, proposed:** an indexer fed incrementally from the
+  changelog, and a separate query service. Early binding by default:
+  the index holds security values, so filtering, counting and paging
+  see visible rows only. A security-freshness watermark per object
+  type advances with every security-relevant change. When the index
+  is behind it, results are re-verified against the freshest source
+  and counts are reported as unavailable, never overstated. Live
+  reads remain available per type.
+- **What it costs:** exposure bounded by the watermark rather than
+  zero; custody of another copy of customer data; edits merged into
+  the index; indexing to operate.
+- **Owner:** [NEEDS OWNER] It reverses Elysium's read-time
+  resolution, so `RULES.md` H5 requires explicit authorization first.
+- **Done when:** after a reclassification, no member of the former
+  audience sees the object once the watermark has advanced, measured;
+  no count includes an invisible row.
+
+### R-71 Aggregate inference is controlled
+
+- **Elysium:** aggregates are exact at any group size. [code]
+- **Precedent:** suppressing aggregates over very small groups is
+  standard practice. A national statistics agency moved to
+  differential privacy after reconstructing data for 17% of its
+  population from tables protected by record swapping. A data
+  platform offers differentially private aggregates, blocking
+  row-level reads. The costs are documented: a spent privacy budget
+  answers nothing more, and small groups lose accuracy. [precedent]
+- **Urshanabi:** aggregates below a configurable group size are
+  suppressed by default; differential privacy is opt-in for
+  designated sensitive types, with a per-user budget.
+- **Done when:** every aggregate route suppresses a group below the
+  threshold, and a designated type refuses row-level reads and stops
+  answering when a budget is spent.
+
+### R-72 Agent defenses are evaluated adaptively
+
+- **Elysium:** model tests pass or fail on one run; injection is not
+  measured. [docs]
+- **Precedent:** research has converged on enforcing agent security
+  outside the model, with a planner that never sees untrusted data.
+  A 2026 study warns these defenses are validated only against fixed
+  attacks — the method under which adaptive attacks later broke
+  twelve in-model defenses at over 90% success. [precedent]
+- **Urshanabi:** the out-of-band pattern, and adaptive,
+  defense-aware attacks in the nightly evaluation.
+- **Done when:** the nightly run includes adaptive attacks and fails
+  on a rise in their success rate.
+
 ---
 
 # Phase 2 — Writes
@@ -527,6 +656,31 @@ expensive once data or users exist.
 - **Urshanabi:** an owner decision between hosted, customer-cloud and
   disconnected cells, recorded before this phase starts.
 
+### R-73 Metering, quotas and visible cost
+
+- **Elysium:** request rate, errors and duration per route, and a
+  20-question window per user; nothing per tenant. [code]
+- **Precedent:** an established platform meters compute and indexing
+  throughput per object type; its users report limited cost
+  visibility. [precedent]
+- **Urshanabi:** per-tenant metering and quotas, indexing throughput
+  limits, a cost estimate shown before a query runs, and usage
+  visible to the customer.
+- **Done when:** in a load test a noisy tenant is throttled without
+  affecting another, and estimates fall within a stated tolerance.
+
+### R-74 The ontology is portable
+
+- **Elysium:** its ontology is a bespoke format. [code]
+- **Precedent:** lock-in is the most consistent criticism of the
+  established platform. An open, vendor-neutral semantic-model
+  specification was published in 2026 under a permissive licence and
+  has entered an open-source foundation's incubator. [precedent]
+- **Urshanabi:** its own format is documented openly, and exports to
+  the open specification.
+- **Done when:** an export-then-import round trip preserves types,
+  links and metric definitions.
+
 ---
 
 # Phase 4 — Sync and automation
@@ -585,6 +739,32 @@ expensive once data or users exist.
 - **Done when:** a refused sync produces one notification per eligible
   administrator, with repeats suppressed.
 
+### R-75 Distributed compute, batch and streaming
+
+- **Elysium:** single-process sync of whole tables. [docs]
+- **Precedent:** autoscaling distributed batch and streaming engines
+  run beside single-node engines, which handle terabyte-scale inputs
+  of the right shape. Streaming object types there give up user edits
+  and multi-source objects. [precedent]
+- **Urshanabi:** single-node by default, distributed beyond one
+  node, and streaming indexing designed to merge edits from the
+  start.
+- **Done when:** a transform over data larger than one node's memory
+  completes, and a streaming type accepts an edit.
+
+### R-76 Classification follows lineage
+
+- **Elysium:** provenance is recorded per table, and the published
+  manifest carries the configuration's security declarations, but
+  nothing propagates to derived data. [measured]
+- **Precedent:** markings propagate automatically to every derived
+  dataset; stopping propagation is explicit in code and visible in
+  the lineage graph; a change can be simulated before it applies.
+  [precedent]
+- **Urshanabi:** the same, with every stop requiring review.
+- **Done when:** a derived dataset inherits its inputs' compartments,
+  and an unreviewed stop fails validation.
+
 ---
 
 # Phase 5 — Commercial hardening
@@ -631,8 +811,12 @@ expensive once data or users exist.
 
 - **Elysium:** its install script is a fresh install, not an upgrade
   path. [docs]
+- **Precedent:** agents inside each environment pull declarative
+  plans; a hub releases a plan only when its constraints hold, and
+  prioritises recalling a bad release. [precedent]
 - **Urshanabi:** every release upgrades the previous one in place,
-  migrations included.
+  migrations included. Cells pull releases the way they pull
+  configuration, staged by constraint, with automatic recall.
 - **Done when:** CI upgrades the last release's cell to the new one
   with data intact.
 
@@ -646,3 +830,16 @@ expensive once data or users exist.
 ### R-65 An independent security audit and penetration test
 
 - **Urshanabi:** before the first external customer.
+
+### R-77 Ephemeral infrastructure, per-workload egress
+
+- **Elysium:** neither; its only egress control is the engine
+  refusing to attach other databases. [code]
+- **Precedent:** nodes live at most 48 hours and containers at most
+  72, so every service is built for failover and a compromise cannot
+  persist; network egress is allowed per workload by container-level
+  firewall rules. [precedent]
+- **Urshanabi:** an enforced maximum lifetime, and egress denied by
+  default with a declared allowlist per workload.
+- **Done when:** a container past its maximum age is replaced, and a
+  workload's connection to an undeclared host is refused.
