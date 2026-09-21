@@ -8,3 +8,4 @@ Cargo.lock
 rust-toolchain.toml
 deny.toml
 services/query/Cargo.toml
+libs/ontology/Cargo.toml

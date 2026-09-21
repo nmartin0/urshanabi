@@ -1,5 +1,5 @@
 #!/bin/sh
-# services/query/script/bootstrap: the shared systems-language toolchain.
+# libs/ontology/script/bootstrap: the shared systems-language toolchain.
 set -u
 cd "$(dirname "$0")/../../.." || exit 1
 exec script/systems-toolchain

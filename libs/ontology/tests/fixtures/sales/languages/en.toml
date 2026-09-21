@@ -1,0 +1,12 @@
+"Customer" = { name = "Customer", plural = "Customers" }
+"Customer.customer_id" = { name = "Customer ID" }
+"Customer.credit_limit" = { name = "Credit limit" }
+"Customer.notes" = { name = "Notes" }
+"Order" = { name = "Order", plural = "Orders" }
+"Order.order_id" = { name = "Order ID" }
+"Order.customer_id" = { name = "Customer ID" }
+"Order.total" = { name = "Total" }
+"CustomerOrders" = { name = "Customer's orders" }
+"RaiseCreditLimit" = { name = "Raise the credit limit" }
+"RaiseCreditLimit.new_limit" = { name = "New limit" }
+"TotalCredit" = { name = "Total credit" }

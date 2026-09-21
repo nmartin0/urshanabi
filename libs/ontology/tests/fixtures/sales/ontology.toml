@@ -1,0 +1,3 @@
+name      = "Sales"
+version   = 3
+languages = ["en", "es", "pt"]

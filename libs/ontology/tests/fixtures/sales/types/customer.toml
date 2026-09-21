@@ -1,0 +1,23 @@
+name        = "Customer"
+source      = "curated.sales.customers"
+primary_key = "customer_id"
+freshness   = "near-real-time"
+description = "A person or organisation that buys from us."
+
+[[property]]
+name           = "customer_id"
+type           = "string"
+classification = "internal"
+
+[[property]]
+name      = "credit_limit"
+type      = "decimal"
+editable  = true
+reconcile = "edit-persists"
+
+[[property]]
+name      = "notes"
+type      = "text"
+editable  = true
+reconcile = "edit-persists"
+column    = ""

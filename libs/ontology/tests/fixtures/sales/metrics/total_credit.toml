@@ -1,0 +1,4 @@
+name        = "TotalCredit"
+of          = "Customer"
+aggregation = "sum"
+expression  = "credit_limit"

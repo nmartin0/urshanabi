@@ -1,0 +1,10 @@
+name  = "RaiseCreditLimit"
+risk  = "high"
+edits = "Customer"
+
+[[parameter]]
+name = "new_limit"
+type = "decimal"
+
+[[rule]]
+set = { credit_limit = "new_limit" }

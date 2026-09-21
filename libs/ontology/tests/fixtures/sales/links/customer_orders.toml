@@ -1,0 +1,5 @@
+name        = "CustomerOrders"
+from        = "Customer"
+to          = "Order"
+cardinality = "one-to-many"
+keys        = [{ from = "customer_id", to = "customer_id" }]

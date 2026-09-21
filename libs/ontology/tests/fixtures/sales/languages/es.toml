@@ -1,0 +1,12 @@
+"Customer" = { name = "Cliente", plural = "Clientes" }
+"Customer.customer_id" = { name = "ID de cliente" }
+"Customer.credit_limit" = { name = "Límite de crédito" }
+"Customer.notes" = { name = "Notas" }
+"Order" = { name = "Pedido", plural = "Pedidos" }
+"Order.order_id" = { name = "ID de pedido" }
+"Order.customer_id" = { name = "ID de cliente" }
+"Order.total" = { name = "Total" }
+"CustomerOrders" = { name = "Pedidos del cliente" }
+"RaiseCreditLimit" = { name = "Aumentar el límite de crédito" }
+"RaiseCreditLimit.new_limit" = { name = "Nuevo límite" }
+"TotalCredit" = { name = "Crédito total" }

@@ -1,0 +1,10 @@
+#!/bin/sh
+# libs/ontology/script/test-integration: loads the fixture ontology,
+# breaks each rule in turn, and parses every example in the format's
+# specification.
+set -u
+cd "$(dirname "$0")/../../.." || exit 1
+PATH="$PWD/.tools/bin:$PATH"
+export PATH
+cargo test --locked -p ontology --tests || { echo "ontology: integration tests FAILED"; exit 1; }  # name-ok
+echo "ontology: integration tests passed."

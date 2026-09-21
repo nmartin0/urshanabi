@@ -1110,10 +1110,12 @@ then audit and operations.
 ### R-51 Configuration is authored as code
 
 - **Class:** parity
-- **Status:** in progress — the format is specified
-  (`docs/ontology-format.md`); remaining: the shared library, bundle
-  signing, the allow-listed manifest, and the check that only the
-  library parses definitions.
+- **Status:** in progress — the format is specified, and the shared
+  library loads it and enforces its rules, reporting every problem at
+  once (`docs/ontology-format.md`, `libs/ontology/src/validate.rs`);
+  remaining: checking declared classifications against lineage and
+  sources against the table catalogue, bundle signing, the allow-listed
+  manifest, and the check that only the library parses definitions.
 - **Outcome:** ontology and policy authored in version control,
   compiled and signed by the control plane, never edited around it, and
   published beside the data as an allow-listed manifest. The meaning of
@@ -1136,7 +1138,10 @@ then audit and operations.
 ### R-130 The ontology speaks every supported language
 
 - **Class:** improvement
-- **Status:** planned
+- **Status:** in progress — a missing translation, or a missing
+  catalogue for a listed language, fails validation
+  (`libs/ontology/tests/rules.rs`); remaining: every screen and agent
+  showing the reader's language.
 - **Outcome:** every object type, property, link type and action
   carries display names and descriptions per language in the ontology
   itself, authored with it (R-51) and checked for completeness. Every
@@ -1724,9 +1729,10 @@ then audit and operations.
 ### R-74 The ontology is portable
 
 - **Class:** new
-- **Status:** in progress — the format is specified openly
-  (`docs/ontology-format.md`); remaining: the export and its round-trip
-  test.
+- **Status:** in progress — the format is specified openly, and every
+  example in the specification is tested against the library
+  (`docs/ontology-format.md`, `libs/ontology/tests/specification.rs`);
+  remaining: the export and its round-trip test.
 - **Outcome:** its own format is documented openly, and exports to the
   open specification.
 - **Practice and precedent:** lock-in is the most consistent criticism
@@ -2046,7 +2052,11 @@ enabled.
 ### R-102 Edits and source data meet under declared rules
 
 - **Class:** parity
-- **Status:** planned
+- **Status:** in progress — an editable property without a declared
+  rule fails validation, and a property that exists only through edits
+  must keep them (`libs/ontology/tests/rules.rs`); remaining: the edits
+  store, reconciliation on refresh, and the winning source shown on each
+  field.
 - **Outcome:** every editable field declares how a user's edit and
   fresh source data are reconciled — the edit persists, the most recent
   value wins, or a named source has priority — with no silent default.

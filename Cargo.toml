@@ -2,7 +2,7 @@
 # one dependency set, one lockfile, shared lints.
 [workspace]
 resolver = "3"
-members = ["services/query"]
+members = ["libs/ontology", "services/query"]
 
 [workspace.package]
 edition = "2024"
@@ -13,6 +13,8 @@ publish = false
 
 [workspace.dependencies]
 prost = "0.14.4"
+serde = { version = "1.0.229", features = ["derive"] }
+toml = "1.1.6"
 prost-types = "0.14.4"
 tonic = "0.14.6"
 tonic-prost = "0.14.6"

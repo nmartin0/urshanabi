@@ -1,0 +1,5 @@
+#!/bin/sh
+# libs/ontology/script/test: this component's systems-language gates.
+set -u
+cd "$(dirname "$0")/../../.." || exit 1
+exec script/systems-gates ontology

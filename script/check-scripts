@@ -430,7 +430,7 @@ expect_msg fail "a tool that cannot be checked fails" "CANNOT CHECK" "$t/script/
 # The real component script, run against a dependency-free crate that
 # compiles in seconds.
 syscrate() {  # syscrate NAME: a one-crate workspace with the query component's gates
-    tree "$1"
+    tree "$1" systems-gates
     mkdir -p "$t/services/query/src" "$t/services/query/script" "$t/.tools/bin"
     cp "$repo/services/query/script/test" "$t/services/query/script/" || exit 1
     cp "$repo/deny.toml" "$repo/rust-toolchain.toml" "$t/" || exit 1  # name-ok

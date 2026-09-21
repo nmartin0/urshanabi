@@ -1,0 +1,30 @@
+#!/bin/sh
+# script/systems-gates PACKAGE: the systems-language gates for one component
+# (RULES.md E3), shared so every component runs the same ones:
+# formatting; lints at the strictest level with warnings as errors, which
+# also catches dead code; unit tests under UTC, a zone behind it and a
+# zone observing daylight saving (roadmap R-14); and the dependency
+# policy in deny.toml.
+set -u
+pkg=${1:-}
+[ -n "$pkg" ] || { echo "usage: script/systems-gates PACKAGE" >&2; exit 2; }
+cd "$(dirname "$0")/.." || exit 1
+PATH="$PWD/.tools/bin:$PATH"
+export PATH
+failed=""
+run() {  # run GATE COMMAND...
+    gate=$1; shift
+    echo "$pkg: $gate"
+    "$@" || failed="$failed $gate"
+}
+run formatting cargo fmt --check -p "$pkg"  # name-ok
+run lints cargo clippy --locked -p "$pkg" --all-targets -- -D warnings  # name-ok
+for zone in UTC America/Sao_Paulo America/New_York; do
+    run "tests-$zone" env TZ="$zone" cargo test --locked -p "$pkg" --lib --bins  # name-ok
+done
+run dependencies cargo deny --locked check  # name-ok
+if [ -n "$failed" ]; then
+    echo "$pkg: FAILED:$failed"
+    exit 1
+fi
+echo "$pkg: every gate passed."

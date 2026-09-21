@@ -10,6 +10,13 @@ components can disagree about the ontology (R-51).
 - **Speaks to:** nothing on the network; it is a library
 - **Roadmap:** R-51, R-70
 
-**Status:** planned; nothing is built yet. When work starts, this
-project gains `script/bootstrap`, `script/test` and
-`script/test-integration` (`RULES.md` E5).
+**Status:** loads an ontology written in the format
+`docs/ontology-format.md` specifies, and refuses one that breaks its
+rules, reporting every problem at once. Checking classifications
+against lineage, and sources against the table catalogue, waits for
+the pipelines that provide them.
+
+- `script/test` runs the systems-language gates (`script/systems-gates`).
+- `script/test-integration` loads a complete fixture ontology in three
+  languages, breaks each rule in turn, and parses every example in the
+  specification.

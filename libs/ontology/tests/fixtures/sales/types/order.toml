@@ -1,0 +1,16 @@
+name        = "Order"
+source      = "curated.sales.orders"
+primary_key = "order_id"
+freshness   = "real-time"
+
+[[property]]
+name = "order_id"
+type = "string"
+
+[[property]]
+name = "customer_id"
+type = "string"
+
+[[property]]
+name = "total"
+type = "decimal"

@@ -1,27 +1,5 @@
 #!/bin/sh
-# services/query/script/test: the systems-language gates for this
-# component (RULES.md E3): formatting, the strictest lints with warnings
-# as errors, unit tests, and the dependency policy in deny.toml.
+# services/query/script/test: this component's systems-language gates.
 set -u
 cd "$(dirname "$0")/../../.." || exit 1
-PATH="$PWD/.tools/bin:$PATH"
-export PATH
-failed=""
-run() {  # run GATE COMMAND...
-    gate=$1; shift
-    echo "query: $gate"
-    "$@" || failed="$failed $gate"
-}
-run formatting cargo fmt --check -p query  # name-ok
-run lints cargo clippy --locked -p query --all-targets -- -D warnings  # name-ok
-# Tests run under UTC, a zone behind it and a zone observing daylight
-# saving, so code that reads the host's local time fails (roadmap R-14).
-for zone in UTC America/Sao_Paulo America/New_York; do
-    run "tests-$zone" env TZ="$zone" cargo test --locked -p query --lib --bins  # name-ok
-done
-run dependencies cargo deny --locked check  # name-ok
-if [ -n "$failed" ]; then
-    echo "query: FAILED:$failed"
-    exit 1
-fi
-echo "query: every gate passed."
+exec script/systems-gates query

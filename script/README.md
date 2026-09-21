@@ -14,6 +14,9 @@ script/cibuild    # exactly what CI runs: bootstrap, test, test-integration
 - `test-integration` — every component's own `script/test-integration`.
 - `each-component NAME` — runs every component's `script/NAME`; the
   one place components are discovered.
+- `systems-gates PACKAGE` — the systems-language gates, and
+  `systems-toolchain` — its toolchain, each shared by every component
+  in that language so none can drift.
 - `report-tool-updates` — reports any pinned tool with a newer release;
   run weekly by its own workflow, never by `test`, so a new upstream
   release cannot fail anyone's push.
