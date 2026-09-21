@@ -467,11 +467,11 @@ any commercial system needs, whatever its category.
 - **Class:** foundation
 - **Outcome:** `RULES.md` part three is enforced in CI from the first
   commit: every dependency records its rung on the standard-library
-  ladder (E1); the repository follows the one-repository layout with
-  one workspace per language (E2); every language passes the six gates
-  (E3); and tests are written in the five layers, weighted toward
-  integration and contracts (E4). One command runs every gate locally
-  exactly as CI does.
+  ladder (E1); every component is its own project, with dependencies
+  shared per language and isolation enforced at code boundaries (E2);
+  every language passes the six gates (E3); tests are discovered,
+  never listed, and written in the layers of E4; and every project and
+  the repository root share the same delegating scripts (E5).
 - **Practice and precedent:** repositories are kept whole when code is
   shared and changes coordinated; heavyweight multi-language build
   systems pay off only at very large scale. The established
@@ -485,8 +485,11 @@ any commercial system needs, whatever its category.
   exited successfully while that gate failed. A test that deliberately
   breaks each gate would have caught it. [measured]
 - **Done when:** a deliberate violation of each gate, in each language
-  present, fails CI; and a dependency without a recorded rung fails
-  the build.
+  present, fails CI; a dependency without a recorded rung fails the
+  build; a service importing another service's code fails
+  `script/check-boundaries`; and the top-level script fails against a
+  planted failing component, a component with no script, and an empty
+  tree.
 
 ---
 

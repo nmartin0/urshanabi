@@ -507,36 +507,78 @@ the canonical choice carry the least of that risk.
 *Test:* every entry in the dependency register records which rung it
 sits on and why a lower rung would not do.
 
-## E2. One repository; each language's own tools.
+## E2. One repository; every component its own project.
 
 **Urshanabi lives in one repository.** Practice favours one
-repository when code is shared and changes are coordinated, and
-separate repositories when teams are genuinely independent. Here the
-contracts are shared, one owner coordinates, and changes routinely
-span services.
+repository when a small team owns most services and changes cross
+service boundaries, since one change and one review cover the whole
+of it; one repository still lets every service build and deploy on
+its own.
 
-**Each language builds with its own official toolchain, in one
-workspace per language at the root**, so each language has exactly
-one lockfile. A thin task runner calls the native tools; one command
-runs every gate (E3) locally exactly as CI runs it. A heavyweight
-multi-language build system is adopted only if measurement shows the
-native tools cannot keep builds fast, because its setup cost is
-justified only at very large scale.
+**Every component is its own project**: its own directory, package
+manifest, tests, scripts (E5), container build and a short README
+saying what it is and which contracts it speaks. It can be built,
+tested and shipped as if the rest of the repository did not exist.
+
+**Dependencies are shared per language, not per component**, as each
+language's maintainers advise. The services language keeps one module
+for the whole repository: its maintainers say one repository with one
+module is almost always simpler, and several modules need awkward
+redirections to share code. The systems language keeps one workspace,
+whose members share a lockfile and a build directory so shared
+libraries are compiled once. A language's projects are split only
+where their requirements genuinely conflict: the agent and the
+pipelines are separate projects, each with its own lockfile, because
+the orchestrator's installation constraints and the agent's model
+libraries pull in different directions. Diamond conflicts arise only
+inside one program, so sharing versions between separate services
+costs nothing in isolation.
+
+**Isolation is enforced at the code boundary, never left to
+convention.**
+
+- Services-language code lives under each service's `internal/`
+  directory, which that language's compiler forbids any other
+  service to import.
+- A systems-language service may depend on `libs/` only, never on
+  another service; a check fails the build otherwise, because that
+  language has no compiler-enforced equivalent.
+- The interface depends on nothing but the client generated from
+  `contracts/`, and develops against a mock generated from the same
+  contracts.
+- `script/check-boundaries` fails if any manifest reaches from one
+  component into another.
+
+**A contract exists in exactly one place.** No copy of a contract
+file lives anywhere outside `contracts/`, and generated code is
+produced at build time rather than committed (R-11). If generated
+code is ever committed, CI regenerates it and fails on any
+difference.
+
+A heavyweight multi-language build system is adopted only if
+measurement shows the native tools cannot keep builds fast.
 
 **Layout:**
 
-- `contracts/` — every service, event and error contract; the single
-  source from which clients are generated.
-- `conformance/` — the behaviour specification and its suite.
-- `services/<name>/` — one directory per deployable service.
-- `libs/<language>/` — shared libraries, including the one ontology
-  library (roadmap R-51).
-- `pipelines/` — pipeline definitions in our own format, and their
-  transformations.
-- `ui/` — the interface and its design system.
-- `deploy/` — cell, bundle and release definitions.
-- `docs/` — design documents; `RULES.md` and `ROADMAP.md` stay at
-  the root.
+```
+AGENTS.md  RULES.md  ROADMAP.md  README.md  LICENSE
+<systems-language workspace manifest and lockfile>
+<services-language module manifest and checksums>
+script/            top-level scripts (E5)
+contracts/         every service, event and error contract
+libs/ontology/     the one ontology library (R-51)
+services/<name>/   one project per deployable service
+pipelines/         pipeline definitions and transformations
+ui/                the interface and its design system
+conformance/       the behaviour specification and its suite
+e2e/               the few end-to-end journeys
+load/              load generation against the objectives (R-66)
+deploy/            cell, bundle and release definitions
+docs/              design documents
+```
+
+**`AGENTS.md`** at the root tells coding agents how to work here and
+points them to this file, as other large repositories now do.
 
 ## E3. Every language passes the same six gates.
 
@@ -593,9 +635,80 @@ faults occur where services meet.
 5. **End-to-end** — few, covering only critical journeys, in an
    ephemeral environment per change. Never the first line of defence.
 
+**Where each layer lives:**
+
+- **Unit** — in each project, beside its code; nothing external.
+- **Integration** — in each project, marked as integration; real
+  dependencies in temporary containers.
+- **Component** — in each project; the whole service, collaborators
+  replaced by test doubles.
+- **Contract** — the consumer records expectations and the provider
+  verifies them in its own build; the expectation files live in
+  `contracts/`.
+- **Conformance** — `conformance/`; the whole system, black-box.
+- **End-to-end** — `e2e/`; a temporary full environment.
+- **Load** — `load/`; against the scale objectives.
+
+**Tests are discovered, never listed.** Each language's own tool
+finds every test in a component, and the top-level script finds every
+component by walking the tree. Of four well-known microservice
+repositories inspected, three had tests that never ran or failures
+that were swallowed: a fixed list of directories that omitted
+existing tests, unit tests no build or pipeline ever invoked, and a
+loop whose exit status was only its last iteration's. The one that
+discovered its tests did not. A component whose test files are not
+all collected fails.
+
+**Slow layers carry a marker.** Integration tests are marked so the
+fast layers run on their own; the marker, not a list, decides what
+runs where.
+
 Alongside the layers: the black-box conformance suite (R-07); fuzzing
 of every external input; mutation testing; fault injection for
 deadlines, breakers and retries (R-83); load against the scale
 objectives (R-66); security tests for every denial property; and the
 agent evaluations (R-28, R-72). Every test declares its prerequisites
 and skips by name when one is missing (R-02).
+
+## E5. Same scripts everywhere; the top-level script only delegates.
+
+**Every project has the same script names**, so anyone can build and
+test any component without learning it first — a convention one large
+software company adopted across all its projects:
+
+- `script/bootstrap` — installs the project's dependencies.
+- `script/test` — runs its gates (E3) and its fast test layers.
+- `script/test-integration` — runs the tests that need real
+  dependencies in containers.
+
+**The top-level `script/` directory holds the same names, plus
+`cibuild` for CI and `check-boundaries` (E2).** Each top-level script
+does only what a person could do by hand: it walks every component,
+runs that component's script of the same name inside its directory,
+and reports. CI runs exactly the scripts a person runs.
+
+**The top-level scripts are plain POSIX `sh`**, linted by the
+canonical shell linter in POSIX mode, and they:
+
+- change to the repository root first, so they behave the same from
+  any directory;
+- find components by walking the tree, never from a fixed list;
+- treat a component without the named script as a failure, not a
+  skip;
+- run every component even after a failure, then report every
+  failure together — so they deliberately do not stop at the first
+  error;
+- fail if they found no components at all, so a run that tested
+  nothing can never pass;
+- never place a command whose exit status matters on the left of a
+  pipe, because the option that propagates such failures entered the
+  POSIX standard only in its 2024 edition and older shells lack it.
+
+**The scripts are tested themselves.** A test runs the top-level
+script against a planted failing component, a component with no
+script and an empty tree, and expects failure from all three.
+
+Why: Elysium's lint script reported success while a gate failed, and
+three of the four repositories inspected had the same class of fault
+(E4). A convenience script that can pass while testing nothing is
+worse than none.
