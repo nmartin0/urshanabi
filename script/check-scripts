@@ -458,6 +458,26 @@ expect_msg fail "a local-time conversion fails under both non-UTC zones, and onl
 syscrate r6; plant 's/^publish = false$/publish = true\nlicense = "GPL-3.0-only"/' services/query/Cargo.toml
 expect_msg fail "a disallowed licence fails the dependencies gate" "FAILED: dependencies" "$t/services/query/script/test"
 
+
+# --- check-ontology-parsers: only the library parses definitions (R-51)
+parsers() {  # parsers NAME: a tree whose library parses TOML
+    tree "$1" check-ontology-parsers
+    cp "$repo/script/ontology-parsers.list" "$t/script/"
+    mkdir -p "$t/libs/ontology/src" "$t/services/x/src" "$t/pipelines"
+    printf 'let o = toml::from_str(text);\n' > "$t/libs/ontology/src/lib.rs"  # name-ok
+    printf 'fn main() {}\n' > "$t/services/x/src/main.rs"
+}
+parsers o1
+expect pass "the library alone parsing definitions passes" "$t/script/check-ontology-parsers"
+parsers o2; printf 'let o = toml::from_str(text);\n' > "$t/services/x/src/main.rs"  # name-ok
+expect_msg fail "a service calling the parser fails" "only libs/ontology parses" "$t/script/check-ontology-parsers"
+parsers o3; printf '[dependencies]\ntoml = "1"\n' > "$t/services/x/Cargo.toml"  # name-ok
+expect_msg fail "a service depending on the parser fails" "services/x/Cargo.toml:2" "$t/script/check-ontology-parsers"
+parsers o4; printf 'import tomllib\n' > "$t/pipelines/load.py"  # name-ok
+expect_msg fail "another language's parser fails" "pipelines/load.py:1 imports tomllib" "$t/script/check-ontology-parsers"
+parsers o5; printf 'path := "ontology/types/customer.toml"\n' > "$t/services/x/main.go"  # name-ok
+expect_msg fail "code naming a definition file fails" "names an ontology definition file" "$t/script/check-ontology-parsers"
+
 # Guard: a self-test whose helper is missing or misspelled fails with
 # "not found" and records nothing. Count the calls written in this file
 # and require that every one ran.

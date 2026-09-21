@@ -1113,14 +1113,15 @@ then audit and operations.
 ### R-51 Configuration is authored as code
 
 - **Class:** parity
-- **Status:** in progress — the format is specified, and the shared
+- **Status:** in progress — the format is specified; the shared
   library loads it and enforces its rules, reporting every problem at
-  once (`docs/ontology-format.md`, `libs/ontology/src/validate.rs`);
+  once; and a check fails if any other component parses ontology
+  definitions (`docs/ontology-format.md`,
+  `libs/ontology/src/validate.rs`, `script/check-ontology-parsers`);
   remaining: checking declared classifications against lineage and
   sources against the table catalogue, a check refusing breaking changes
-  between versions, property visibility levels, bundle signing, the
-  allow-listed manifest, and the check that only the library parses
-  definitions.
+  between versions, property visibility levels, bundle signing, and the
+  allow-listed manifest.
 - **Outcome:** ontology and policy authored in version control,
   compiled and signed by the control plane, never edited around it, and
   published beside the data as an allow-listed manifest. The meaning of

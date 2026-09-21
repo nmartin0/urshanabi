@@ -1,0 +1,12 @@
+# Imports that parse TOML, one per line, for script/check-ontology-parsers
+# (roadmap R-51). Only libs/ontology may use them. Matched as substrings
+# of code lines, outside Markdown and lockfiles.
+toml::
+toml =
+tomllib
+tomli
+import toml
+BurntSushi/toml
+pelletier/go-toml
+smol-toml
+@iarna/toml

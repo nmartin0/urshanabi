@@ -1,0 +1,39 @@
+#!/bin/sh
+# script/check-ontology-parsers: only the shared ontology library parses
+# ontology definitions (roadmap R-51). Outside libs/ontology, no code
+# file may import a TOML parser listed in script/ontology-parsers.list,
+# and none may name an ontology definition file. The workspace manifest
+# may declare the parser for the library to use; lockfiles and Markdown
+# are not code.
+set -u
+cd "$(dirname "$0")/.." || exit 1
+
+files=$(mktemp) || exit 1
+trap 'rm -f "$files"' EXIT
+git ls-files -co --exclude-standard > "$files" || exit 1  # name-ok
+
+awk -v listfile=script/ontology-parsers.list -v filelist="$files" '
+BEGIN {
+    while ((getline l < listfile) > 0) if (l != "" && l !~ /^#/) pat[++n] = l
+    while ((getline path < filelist) > 0) {
+        if (path ~ /^libs\/ontology\// || path ~ /\.md$/) continue
+        if (path ~ /(^|\/)(Cargo\.lock|go\.sum|package-lock\.json|uv\.lock)$/) continue  # name-ok
+        if (path == "Cargo.toml" || path ~ /^script\//) continue
+        checked++
+        ln = 0
+        while ((getline line < path) > 0) {
+            ln++
+            for (i = 1; i <= n; i++)
+                if (index(line, pat[i])) {
+                    printf "PARSER %s:%d imports %s; only libs/ontology parses ontology definitions\n", path, ln, pat[i]; bad = 1
+                }
+            if (line ~ /ontology\.toml|ontology\/(types|links|actions|metrics|languages)\//) {
+                printf "PARSER %s:%d names an ontology definition file; only libs/ontology reads them\n", path, ln; bad = 1
+            }
+        }
+        close(path)
+    }
+    if (checked == 0) { print "FAIL: no files checked"; exit 1 }
+    if (bad) exit 1
+    printf "check-ontology-parsers: %d files; only libs/ontology parses ontology definitions.\n", checked
+}'

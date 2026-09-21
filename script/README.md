@@ -32,6 +32,14 @@ Repository checks, each runnable on its own:
   security flaws (R-86).
 - `check-secrets` — no credential anywhere in the history.
 - `check-boundaries` — no component reaches into another (E2).
+- `check-compliance` — every implemented control in
+  `docs/compliance.md` cites a passing check and self-test (R-125).
+- `check-writers` — every store in `docs/writers.md` has exactly one
+  writer, and says how the store enforces it (R-79).
+- `check-scale` — every objective in `docs/scale.md` has a number, a
+  unit and a roadmap item; a tested one cites its load test (R-66).
+- `check-ontology-parsers` — only `libs/ontology` parses ontology
+  definitions (R-51).
 - `check-scripts` — the scripts' own tests: every gate is broken on
   purpose and must fail (R-127).
 
