@@ -354,13 +354,25 @@ any commercial system needs, whatever its category.
   cell throughput, derived from the workloads of the customers Urshanabi
   targets. The leading platform's published limits are a reference
   point, not a target.
-- **Practice and precedent:** an established ontology platform
-  publishes its limits per object type: tens of billions of objects per
-  type, a 10-million-object ceiling on a link traversal's result, 10,000
-  objects per edit, and metered indexing throughput. [precedent]
+- **Practice and precedent:** an established ontology platform's
+  current documentation caps a link traversal's result at 10 million
+  objects, loads at most 100,000 into memory per call, and lets one
+  action edit at most 10,000 objects across 50 types; it sets no fixed
+  limit on objects per type, the index's disk space being the ceiling.
+  Established response-time thresholds put instant at about a tenth of a
+  second, uninterrupted flow at a second, and the limit of attention at
+  ten seconds. [precedent]
 - **Learned from Elysium:** no scale target anywhere. Before this
   item, the largest number in this roadmap was a 10-million-row sync.
   [measured]
+- **Decision:** the first release is proven against the largest
+  enterprises and governments (owner, 2026-09-21). The objectives, per
+  cell, are in `docs/scale.md`, kept honest by `script/check-scale`: at
+  least 50 billion objects, 20,000 people at once, 2 billion rows
+  ingested an hour and 1,000 workflows a second at peak; a record opened
+  within 100 ms, a filtered search within 500 ms and a billion-object
+  aggregate within 2 s, each at the 95th percentile. The figures are
+  proposed from precedent and revised only with load-test evidence.
 - **Done when:** the objectives are written in Phase 0, each later
   item that meets one adds its load test, and a change that breaks a
   tested objective fails a scheduled load run.
@@ -1765,7 +1777,12 @@ enabled.
   over a single-company engine of the same design, whose scale it
   matches. The costs accepted: its own cluster in every cell, and a
   foundation membership still at the entry tier, so it sits behind our
-  own workflow interface (RULES.md H4a).
+  own workflow interface (RULES.md H4a). Every cell's cluster is
+  provisioned with 8,192 history shards, derived from the scale
+  objectives (R-66): the engine's maintainers advised at least 4,000 for
+  about 500 workflows a second, and the objective is 1,000. The count is
+  confirmed by a load test before the first cluster is created, because
+  it can never be changed.
 - **Done when:** three replicas produce exactly one run of a scheduled
   expiry; the partition count is recorded with the calculation that
   produced it; and a load run at the R-66 objective completes without

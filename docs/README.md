@@ -9,6 +9,8 @@ the roadmap is right and the document here is stale.
   each implemented one proved by a test.
 - `writers.md` — the single writer of every store, and how the store
   enforces it.
+- `scale.md` — what a single cell must sustain, each objective
+  awaiting or citing its load test.
 - `research/technology-review.md` — every technology role checked
   against the newest alternatives, and each language checked against the
   libraries it uses.

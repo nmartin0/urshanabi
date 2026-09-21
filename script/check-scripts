@@ -331,6 +331,22 @@ expect_msg fail "a store without enforcement fails" "does not say how" "$t/scrip
 writers r5 "| A store | platform: engine and catalog | A grant | R-01 |"
 expect_msg fail "a platform store with two owners fails" "more than one owner" "$t/script/check-writers"
 
+# --- check-scale: objectives stay honest (R-66) ---------------------
+scale() {  # scale NAME ROW: a tree whose objectives hold one row
+    tree "$1" check-scale
+    mkdir -p "$t/docs" "$t/load"
+    printf '#!/bin/sh\nexit 0\n' > "$t/load/run" && chmod +x "$t/load/run"
+    printf '| ID | Objective | Target | Roadmap | Status | Evidence |\n|---|---|---|---|---|---|\n%s\n' "$2" > "$t/docs/scale.md"
+}
+scale q1 "| SO-01 | Opening a record | at most 100 ms | R-70 | tested | ${bt}load/run${bt} |"
+expect pass "a tested objective with a load test passes" "$t/script/check-scale"
+scale q2 "| SO-01 | Opening a record | at most 100 ms | R-70 | tested | — |"
+expect_msg fail "a tested objective without a load test fails" "tested without a load test" "$t/script/check-scale"
+scale q3 "| SO-01 | Opening a record | fast | R-70 | untested | — |"
+expect_msg fail "an objective without a number fails" "needs a number and a unit" "$t/script/check-scale"
+scale q4 "| SO-01 | Opening a record | at most 100 ms | R-70 | tested | ${bt}load/missing${bt} |"
+expect_msg fail "a missing load test fails" "is not executable" "$t/script/check-scale"
+
 if [ -n "$failed" ]; then
     echo "check-scripts FAILED:$failed"
     exit 1
