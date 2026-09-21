@@ -46,8 +46,10 @@ distributes configuration; everything that touches customer data runs in
 a **cell**. Configuration is authored in version control, loaded as a
 signed, numbered generation pinned once per request, and published
 beside the data as an inert manifest. One cell artifact serves hosted,
-customer-cloud and disconnected installations; which comes first is the
-one open decision (R-52).
+customer-cloud and disconnected installations. Hosted cells come first,
+by the owner's decision (R-52): dedicated cells, one per customer, until
+confidential computing makes shared cells safe (R-113). Customer-cloud
+and disconnected cells follow once hosted is established.
 
 Cells differ in trust, and the differences are declared, not assumed:
 

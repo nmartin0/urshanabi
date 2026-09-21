@@ -93,7 +93,7 @@ first automated it lacked about 150 names researched after it was
 written; none had reached the repository, but only because the
 documents had been written carefully.
 
-**Provisional, pending the owner's confirmation:** generic technical
+**Confirmed by the owner (2026-09-21):** generic technical
 vocabulary and published protocol designations — HTTP, TLS, SQL, JSON,
 YAML, TOML, OIDC, SAML, SCIM, RFC numbers — are treated as vocabulary
 rather than product names. So are the designations of standards and

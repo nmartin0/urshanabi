@@ -339,8 +339,8 @@ any commercial system needs, whatever its category.
 ### R-17 Repository visibility and licence
 
 - **Class:** foundation
-- **Status:** in progress — public for the time being; remaining: a
-  licence, or a return to private.
+- **Status:** done — an explicit proprietary notice states the terms
+  (`LICENSE`).
 - **Outcome:** private from the first commit, or licensed
   deliberately. An owner decision.
 - **Learned from Elysium:** its licence describes unpublished
@@ -349,10 +349,11 @@ any commercial system needs, whatever its category.
   unauthenticated requests today, so this roadmap and the security
   design in it are publicly readable, and there is no licence file.
   [measured]
-- **Decision:** public for the time being (owner, 2026-09-21),
-  replacing the earlier decision to make it private. With no licence
-  file, default copyright applies: the code may be read but not reused.
-  Still open: a licence, or a return to private.
+- **Decision:** public for the time being, with an explicit
+  proprietary notice: all rights reserved to Nicholas Martin, and no
+  licence granted except by separate written agreement (owner,
+  2026-09-21). The notice replaces the implicit default of an unlicensed
+  public repository.
 - **Done when:** an unauthenticated request for the repository is
   refused, or a licence file states the terms deliberately chosen.
 
@@ -2097,14 +2098,22 @@ one deployment into a product.
 ### R-52 Tenancy is a product decision, made first
 
 - **Class:** parity
-- **Status:** planned
+- **Status:** done — the decision is recorded here and in the
+  deployment shape of `docs/architecture.md`.
 - **Outcome:** an owner decision between hosted, customer-cloud and
   disconnected cells, recorded before this phase starts.
 - **Learned from Elysium:** single-tenant by construction — recorded
   as a business decision, and it fixes pricing at one deployment per
   customer. [docs]
-- **Owner:** [NEEDS OWNER] Hosted, customer-cloud or disconnected
-  cells, and which comes first.
+- **Decision:** hosted cells come first (owner, 2026-09-21).
+  Customer-cloud and disconnected cells are out of scope until hosted is
+  established; the single cell artifact stays designed for all three, so
+  neither is ruled out. Because R-113 requires confidential computing
+  before a cell is shared between customers, hosted begins with
+  dedicated cells, one per customer, unless that isolation is ready
+  first. Work that requires in-country infrastructure run by an
+  accredited operator, such as a government's classified information,
+  waits for customer-cloud cells.
 - **Done when:** the decision is recorded here, with the models that
   are out of scope named.
 

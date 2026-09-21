@@ -48,3 +48,7 @@ same pinned versions (`script/README.md`).
 Phase 0 is under way. The repository checks and CI run on every push,
 and the contracts component is built; the services are not yet. Every
 roadmap item's status says what is done and what remains.
+
+## Licence
+
+Proprietary; all rights reserved. See `LICENSE`.
