@@ -16,7 +16,8 @@ hidden rows, and large results stream in columnar form.
 - `script/bootstrap` installs the toolchain pinned in
   `rust-toolchain.toml` where its installer exists.
 - `script/test` runs the gates: formatting, lints at the strictest level
-  with warnings as errors, unit tests, and the dependency policy in
-  `deny.toml` (`RULES.md` E3).
+  with warnings as errors, unit tests under UTC, São Paulo and New York
+  (roadmap R-14), and the dependency policy in `deny.toml` (`RULES.md`
+  E3).
 - `script/test-integration` starts the real server and calls it over
   the network.

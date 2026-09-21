@@ -329,7 +329,12 @@ any commercial system needs, whatever its category.
 ### R-14 Tests prove no code depends on the host's timezone
 
 - **Class:** foundation
-- **Status:** planned
+- **Status:** in progress — the systems language's tests run under
+  UTC, São Paulo and New York, set by the component's own script, and a
+  self-test proves a deliberate local-time read fails in both non-UTC
+  zones and passes under UTC alone (`services/query/script/test`,
+  `script/check-scripts`); remaining: the same three runs for each other
+  language, with its first component.
 - **Outcome:** date-sensitive tests run three times: under UTC, under
   a zone behind UTC, and under a zone observing daylight saving. The
   zone is set by the test scripts themselves, so a local run and CI run
@@ -350,9 +355,10 @@ any commercial system needs, whatever its category.
 ### R-128 UTC is the one timezone
 
 - **Class:** foundation
-- **Status:** in progress — the rule is recorded and contracts use the
-  UTC timestamp type (`contracts/urshanabi/build/v1/build.proto`);
-  remaining: the three-zone tests and civil-time scheduling.
+- **Status:** in progress — the rule is recorded, contracts use the
+  UTC timestamp type, and the query service's logs are UTC, proved under
+  three zones (`services/query/src/logging.rs`); remaining: the
+  three-zone tests in the other languages, and civil-time scheduling.
 - **Outcome:** every instant is stored, processed, compared and
   transmitted in UTC: in contracts as the standard UTC timestamp type,
   in text as an RFC 3339 timestamp ending in Z. Only the edge converts

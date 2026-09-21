@@ -452,7 +452,9 @@ expect_msg fail "a lint violation fails the lints gate" "FAILED: lints" "$t/serv
 syscrate r4; printf '\nfn unused() {}\n' >> "$t/services/query/src/lib.rs"
 expect_msg fail "dead code fails the lints gate" "FAILED: lints" "$t/services/query/script/test"
 syscrate r5; plant 's/double(2), 4/double(2), 5/' services/query/src/lib.rs
-expect_msg fail "a failing test fails the tests gate" "FAILED: tests" "$t/services/query/script/test"
+expect_msg fail "a failing test fails the tests gate" "FAILED: tests-UTC" "$t/services/query/script/test"
+syscrate r7; printf '\n/// The host\x27s offset from UTC -- a deliberate local-time read.\n#[must_use]\npub fn host_offset() -> String {\n    let out = std::process::Command::new("date").arg("+%%z").output();\n    out.map(|o| String::from_utf8_lossy(&o.stdout).trim().to_owned())\n        .unwrap_or_default()\n}\n\n#[test]\nfn assumes_utc() {\n    assert_eq!(host_offset(), "+0000");\n}\n' >> "$t/services/query/src/lib.rs"
+expect_msg fail "a local-time conversion fails under both non-UTC zones, and only them" "FAILED: tests-America/Sao_Paulo tests-America/New_York$" "$t/services/query/script/test"
 syscrate r6; plant 's/^publish = false$/publish = true\nlicense = "GPL-3.0-only"/' services/query/Cargo.toml
 expect_msg fail "a disallowed licence fails the dependencies gate" "FAILED: dependencies" "$t/services/query/script/test"
 

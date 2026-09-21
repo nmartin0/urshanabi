@@ -2,14 +2,16 @@
 
 use std::process::ExitCode;
 
-use query::libs::{log, log_output, runtime};
+use query::libs::{log, runtime};
 
 /// The environment variable naming the address to listen on.
 const LISTEN: &str = "URSHANABI_LISTEN";
 
 fn main() -> ExitCode {
-    // Log timestamps are UTC (roadmap R-128).
-    log_output::fmt().with_target(false).init();
+    if let Err(e) = query::logging::init() {
+        eprintln!("cannot start logging: {e}");
+        return ExitCode::FAILURE;
+    }
     let address = std::env::var(LISTEN).unwrap_or_else(|_| "127.0.0.1:50051".to_owned());
     let result = runtime::runtime::Builder::new_multi_thread()
         .enable_all()

@@ -5,6 +5,7 @@
 
 pub mod identity;
 pub mod libs;
+pub mod logging;
 pub mod service;
 
 /// Code generated from `contracts/` at build time (roadmap R-11).
