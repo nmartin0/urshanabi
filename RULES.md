@@ -78,9 +78,11 @@ the tool.
 **The name check enforces this rule (confirmed by the owner).** Its
 forbidden terms live in `script/names.list`, its configuration, as
 committed banned-term lists do in prose linters. A code line that must
-invoke a tool by name — the shell's equivalent of an import — may end
-with the marker `# name-ok`; the check refuses the marker in Markdown
-and on comment lines, so it can never excuse prose. Reviewed English
+invoke or import something by name — a shell script calling a tool, a
+contract importing a standard type — may end with the marker `name-ok`
+in its language's comment syntax (`# name-ok`, `// name-ok` or
+`-- name-ok`); the check refuses the marker in Markdown and on lines
+that are only a comment, so it can never excuse prose. Reviewed English
 phrases that happen to contain a listed word, such as the title of H8,
 are listed in `script/names.allow`.
 

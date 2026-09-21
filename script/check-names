@@ -7,9 +7,10 @@
 #   s TERM   matches TERM anywhere
 # Reviewed English phrases in script/names.allow are removed from a line
 # before it is checked. Files in script/names.exempt are not checked.
-# A code line that must invoke a tool by name may end with "# name-ok",
-# the shell's equivalent of an import; the marker is refused in
-# Markdown and on comment lines, so it can never excuse prose.
+# A code line that must invoke or import something by name may end with
+# "name-ok" in its language's comment syntax -- "# name-ok",
+# "// name-ok" or "-- name-ok"; the marker is refused in Markdown and
+# on lines that are only a comment, so it can never excuse prose.
 set -u
 cd "$(dirname "$0")/.." || exit 1
 
@@ -54,8 +55,8 @@ BEGIN {
         md = (path ~ /\.md$/)
         while ((getline raw < path) > 0) {
             ln++
-            if (raw ~ /# name-ok$/) {
-                if (md || raw ~ /^[ \t]*#/) {
+            if (raw ~ /(#|\/\/|--) name-ok$/) {
+                if (md || raw ~ /^[ \t]*(#|\/\/|--)/) {
                     printf "FAIL %s:%d: name-ok marker not allowed here\n", path, ln
                     bad = 1
                 } else { excused++; continue }

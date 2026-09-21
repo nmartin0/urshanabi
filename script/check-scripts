@@ -128,6 +128,12 @@ expect fail "the name-ok marker is refused on a comment line" "$t/script/check-n
 names n6 "fine"
 printf '#!/bin/sh\nzork build  # name-ok\n' > "$t/tool.sh"
 expect pass "the name-ok marker excuses a code line" "$t/script/check-names"
+names n7 "fine"
+printf 'import "zork/types.proto"; // name-ok\n' > "$t/schema.proto"
+expect pass "a double-slash name-ok marker excuses a code line" "$t/script/check-names"
+names n8 "fine"
+printf '// built on zork // name-ok\n' > "$t/schema.proto"
+expect fail "a double-slash name-ok marker is refused on a comment line" "$t/script/check-names"
 
 # --- check-docs -------------------------------------------------------
 docs() {
