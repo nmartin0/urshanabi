@@ -33,3 +33,5 @@ SP 800-53 references for implemented controls follow the mapping published in SP
 | UC-21 | Vulnerability scans at least every six months, penetration tests at least yearly | SP800-53: RA-5, CA-8; SP800-218: RV.1.2 | R-65 | planned | — |
 | UC-22 | A machine-generated asset inventory and network map, reviewed yearly | SP800-53: CM-8 | R-123 | planned | — |
 | UC-23 | Every production build's fingerprint is published so customers can verify what runs | SP800-53: SA-8, SR-4; SP800-218: PS.2.1, PS.3.1, PS.3.2 | R-121 | planned | — |
+| UC-24 | The single writer of every store is named in a checked map | SP800-53: SA-8, SA-17; SP800-218: PW.1.2 | R-79 | implemented | `script/check-writers`; self-test "a store with two owners fails" |
+| UC-25 | Every store refuses writes from anyone but its owner | SP800-53: AC-3, AC-6 | R-79, R-104 | planned | — |

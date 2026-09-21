@@ -381,8 +381,16 @@ any commercial system needs, whatever its category.
 ### R-79 One writer per store
 
 - **Class:** foundation
-- **Outcome:** a written map naming the single writer of every store,
-  enforced by credentials: only the owner holds write access.
+- **Outcome:** a written map, `docs/writers.md`, naming the single
+  writer of every store, enforced by credentials: only the owner holds
+  write access, and the store refuses everyone else. One writer is one
+  owning identity: an owner may write through more than one mechanism,
+  but always as itself — ingestion appends raw data and runs raw-table
+  maintenance through the reference implementation (R-110), both as
+  ingestion. Tables are enforced by per-table grants in the table
+  catalog, with storage credentials scoped to each table's prefix, which
+  requires each table's files in a directory of their own matching the
+  namespace hierarchy.
 - **Practice and precedent:** shared databases are the most cited
   cause of distributed monoliths, though sharing inside one repository
   with changes shipped together has worked; the rule underneath both is

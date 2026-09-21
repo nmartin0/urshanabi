@@ -312,6 +312,25 @@ expect pass "a clean history passes the secret check" "$t/script/check-secrets"
 secrets s2 planted
 expect fail "a committed credential fails the secret check" "$t/script/check-secrets"
 
+# --- check-writers: one writer per store (R-79) ---------------------
+writers() {  # writers NAME ROW: a tree whose map holds one row
+    tree "$1" check-writers
+    mkdir -p "$t/docs" "$t/services/a" "$t/services/b"
+    printf '# a\n' > "$t/services/a/README.md"
+    printf '# b\n' > "$t/services/b/README.md"
+    printf '## Stores\n\n| Store | Owner | Enforced by | Roadmap |\n|---|---|---|---|\n%s\n' "$2" > "$t/docs/writers.md"
+}
+writers r1 "| A store | ${bt}services/a${bt} | A grant | R-01 |"
+expect pass "a store with one owner passes" "$t/script/check-writers"
+writers r2 "| A store | ${bt}services/a, services/b${bt} | A grant | R-01 |"
+expect_msg fail "a store with two owners fails" "more than one owner" "$t/script/check-writers"
+writers r3 "| A store | ${bt}services/missing${bt} | A grant | R-01 |"
+expect_msg fail "an owner that is not a component fails" "is not a component" "$t/script/check-writers"
+writers r4 "| A store | ${bt}services/a${bt} |  | R-01 |"
+expect_msg fail "a store without enforcement fails" "does not say how" "$t/script/check-writers"
+writers r5 "| A store | platform: engine and catalog | A grant | R-01 |"
+expect_msg fail "a platform store with two owners fails" "more than one owner" "$t/script/check-writers"
+
 if [ -n "$failed" ]; then
     echo "check-scripts FAILED:$failed"
     exit 1

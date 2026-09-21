@@ -1,0 +1,36 @@
+#!/bin/sh
+# script/check-writers: the map in docs/writers.md names exactly one
+# writer for every store (roadmap R-79). Each row names one owner --
+# an existing component, in backticks, or "platform: ROLE" -- says how
+# the store itself enforces it, and cites a roadmap item.
+set -u
+cd "$(dirname "$0")/.." || exit 1
+[ -f docs/writers.md ] || { echo "FAIL: docs/writers.md is missing"; exit 1; }
+
+awk '
+function trim(s) { sub(/^[ \t]+/, "", s); sub(/[ \t]+$/, "", s); return s }
+function fail(msg) { print "WRITERS " store ": " msg; bad = 1 }
+/^## Stores/ { intable = 1; next }
+intable && /^\| / && !/^\| Store \|/ && !/^\|---/ {
+    split($0, f, "|")
+    store = trim(f[2]); owner = trim(f[3]); how = trim(f[4]); road = trim(f[5])
+    rows++
+    if (store == "") fail("a row names no store")
+    if (store in seen) fail("the store appears twice")
+    seen[store] = 1
+    if (owner ~ /^`[^`]+`$/) {
+        dir = substr(owner, 2, length(owner) - 2)
+        if (dir ~ /,/ || dir ~ / /) fail("more than one owner")
+        else if (system("test -f \"" dir "/README.md\"") != 0)
+            fail("owner " dir " is not a component")
+    } else if (owner ~ /^platform: [a-z][a-z -]*[a-z]$/) {
+        if (owner ~ /,| and /) fail("more than one owner")
+    } else fail("owner must be one component in backticks or platform: ROLE")
+    if (how == "") fail("does not say how the store enforces it")
+    if (road !~ /R-[0-9]+/) fail("cites no roadmap item")
+}
+END {
+    if (rows == 0) { print "FAIL: no stores found"; exit 1 }
+    if (bad) exit 1
+    printf "check-writers: %d stores, each with exactly one writer.\n", rows
+}' docs/writers.md

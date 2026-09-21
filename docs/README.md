@@ -7,6 +7,8 @@ the roadmap is right and the document here is stale.
 - `architecture.md` — what Urshanabi is made of and how the parts fit.
 - `compliance.md` — every control mapped to the baselines buyers use,
   each implemented one proved by a test.
+- `writers.md` — the single writer of every store, and how the store
+  enforces it.
 - `research/technology-review.md` — every technology role checked
   against the newest alternatives, and each language checked against the
   libraries it uses.
