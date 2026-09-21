@@ -95,9 +95,22 @@ expensive once data or users exist.
 ### R-06 Service contracts with breaking-change detection
 
 - **Elysium:** one process; contracts were function signatures.
-- **Urshanabi:** every inter-service interface is a versioned
-  contract, checked for breaking changes in CI.
-- **Done when:** removing a field from a contract fails CI.
+- **Precedent:** one vendor's open-source contract toolchain was
+  built to scale its own microservices, but its compatibility checker
+  was never released. The canonical choices are a schema-first binary
+  interface language for internal calls, the industry-standard HTTP
+  API description (governed by a neutral foundation) for the public
+  edge, and the standard event-API description for streams. That
+  vendor's error model separates safe arguments from unsafe ones, so
+  the schema itself declares what may reach a log. [precedent]
+- **Urshanabi:** internal calls defined in a schema-first binary
+  interface language, with breaking-change checks in CI; the public
+  HTTP description generated from it; the changelog and audit streams
+  described with the standard event-API description. Every error
+  argument is declared safe or unsafe, and only safe arguments are
+  ever logged.
+- **Done when:** removing a field from a contract fails CI, and
+  logging an unsafe error argument fails a test.
 
 ### R-07 The conformance suite runs against Elysium
 
@@ -111,8 +124,12 @@ expensive once data or users exist.
 - **Elysium:** request correlation existed and one route of 39
   created an id, so most reads wrote untracked audit lines.
   [docs, fixed late]
+- **Precedent:** diagnosing incidents by logging into individual
+  servers is the recognised sign that observability was left too
+  late. [precedent]
 - **Urshanabi:** every request carries an id from the gateway through
-  every service, into every audit record and log line.
+  every service, into every audit record and log line, with traces,
+  metrics and logs emitted to a vendor-neutral telemetry standard.
 - **Done when:** a test enumerates every route and fails if any
   response lacks the id.
 
@@ -213,6 +230,46 @@ expensive once data or users exist.
   them.
 - **Done when:** a change that breaks an objective fails a scheduled
   load run.
+
+### R-78 Consumer-driven contract tests
+
+- **Elysium:** one process, so there were no consumers to verify
+  against.
+- **Precedent:** contract testing, where producers and consumers
+  verify compatibility independently, is the established way to
+  catch breaking changes without full integration suites.
+  [precedent]
+- **Urshanabi:** each consumer publishes what it relies on; each
+  producer's CI verifies against every consumer's expectations.
+- **Done when:** a producer change that breaks one consumer's
+  recorded expectation fails the producer's build.
+
+### R-79 One writer per store
+
+- **Elysium:** one process owned every store, so ownership was never
+  written down. [code]
+- **Precedent:** shared databases are the most cited cause of
+  distributed monoliths, though sharing inside one repository with
+  changes shipped together has worked; the rule underneath both is
+  clear ownership. [precedent]
+- **Urshanabi:** a written map naming the single writer of every
+  store, enforced by credentials: only the owner holds write access.
+- **Done when:** a service attempting to write a store it does not own
+  is refused by the store, not by convention.
+
+### R-80 Decompose on evidence
+
+- **Elysium:** a single process throughout. [code]
+- **Precedent:** over-splitting before a domain justifies it adds
+  coordination cost with no benefit; the standard advice is to start
+  modular and split when pressure proves it necessary, and to split
+  by capability rather than by technical layer. [precedent]
+- **Urshanabi:** every service contract exists from Phase 0, but
+  Phase 1 ships as few processes as the security boundaries allow.
+  The write-credential boundary justifies its own process; other
+  splits wait for a measurement.
+- **Done when:** each separately deployed service cites the
+  measurement or security boundary that justified it.
 
 ---
 
@@ -517,6 +574,41 @@ expensive once data or users exist.
 - **Done when:** the nightly run includes adaptive attacks and fails
   on a rise in their success rate.
 
+### R-81 Services authenticate each other
+
+- **Elysium:** one process, so there were no internal calls.
+- **Precedent:** the federal guidance for microservices requires
+  mutual authentication between services, a token service and key
+  management. [precedent]
+- **Urshanabi:** every internal call is mutually authenticated, with
+  short-lived, automatically rotated workload identities.
+- **Done when:** a call without a valid workload identity is refused,
+  and an expired identity is refused after rotation.
+
+### R-82 Each service names who may call it
+
+- **Elysium:** one process. [code]
+- **Precedent:** the same guidance applies attribute-based access
+  control between services, not only to users. [precedent]
+- **Urshanabi:** each service declares its permitted callers; all
+  other callers are denied by default.
+- **Done when:** a call from an undeclared service is refused, even
+  with a valid identity and a valid user token.
+
+### R-83 Deadlines, circuit breakers and bulkheads
+
+- **Elysium:** no deadline on model calls and none on requests; one
+  process meant one failure domain. [code]
+- **Precedent:** synchronous call chains are a recognised cause of
+  cascading failure; the established remedies are timeouts, circuit
+  breaking, throttling and isolation of resources. [precedent]
+- **Urshanabi:** a deadline set at the gateway travels with every
+  call and shrinks at each hop; calls to a failing dependency trip a
+  breaker; each dependency has its own bounded resources.
+- **Done when:** with one dependency stalled, requests that do not
+  need it keep meeting their latency objective, and requests that do
+  fail at their deadline with a clear error.
+
 ---
 
 # Phase 2 — Writes
@@ -680,6 +772,21 @@ expensive once data or users exist.
   the open specification.
 - **Done when:** an export-then-import round trip preserves types,
   links and metric definitions.
+
+### R-84 A revoked user stops everywhere, quickly
+
+- **Elysium:** disabling a user ended their sessions; there were no
+  internal tokens to outlive them. [code]
+- **Precedent:** a review of 62 studies lists insufficient token
+  invalidation among recurring microservice vulnerabilities; the
+  stale-permission exposure it causes is a named problem in
+  large-scale authorization. [precedent]
+- **Urshanabi:** internal user tokens live for a bounded, short time;
+  disabling a user or revoking a grant publishes a revocation that
+  every enforcing service honours within a stated bound; high-risk
+  actions check revocation directly.
+- **Done when:** after a user is disabled, no service accepts their
+  token beyond the stated bound, measured.
 
 ---
 
