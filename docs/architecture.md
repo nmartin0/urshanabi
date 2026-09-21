@@ -187,8 +187,8 @@ through the pipelines (R-118).
 
 ## 9. Verification
 
-- **Properties**: `conformance/BEHAVIOURS.md`, checked black-box through
-  one driver per system (R-07).
+- **Properties**: `conformance/BEHAVIOURS.md`, checked black-box against
+  Urshanabi, written test-first (R-07).
 - **Layers**: unit, integration, component, contract, end-to-end,
   weighted toward the boundaries; tests discovered, never listed
   (`RULES.md` E4).

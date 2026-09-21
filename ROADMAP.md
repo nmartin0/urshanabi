@@ -168,18 +168,26 @@ any commercial system needs, whatever its category.
 - **Done when:** removing a field from a contract fails CI, and
   logging an unsafe error argument fails a test.
 
-### R-07 A conformance suite of properties, one driver per system
+### R-07 A conformance suite, built test-first with Urshanabi
 
 - **Class:** foundation
 - **Status:** planned
 - **Outcome:** `conformance/BEHAVIOURS.md` implemented as black-box
-  property tests. Each system is reached through a thin driver that
-  translates a property into that system's own interface. Elysium is the
-  reference for the security properties, not for shapes.
-- **Done when:** the suite passes against Elysium apart from the
-  divergences `BEHAVIOURS.md` names, and against Urshanabi through its
-  own driver; flipping one uniform-denial response in a test build fails
-  it.
+  property tests against Urshanabi, through a thin driver that
+  translates each property into Urshanabi's own interface. The suite is
+  written test-first: each property's test lands with the feature that
+  meets it, starting with the walking skeleton. Elysium is the evidence
+  that each property is achievable and testable, not a target, so no
+  driver is written for it.
+- **Decision:** the suite is built against Urshanabi only (owner,
+  2026-09-21). A driver for Elysium would be throwaway work against a
+  prototype interface Urshanabi deliberately does not keep, would fail
+  in its known flaws and need each recorded as a divergence, and would
+  risk shaping the tests around Elysium's shapes. Each test is proved
+  instead by a planted fault in a test build of Urshanabi.
+- **Done when:** every property passes against Urshanabi, and for each
+  property a test build with a planted fault — such as one
+  uniform-denial response flipped — fails the suite.
 
 ### R-08 A request id on every route from the first route
 

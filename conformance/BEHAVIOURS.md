@@ -12,9 +12,11 @@ an intention. That is why Elysium is the evidence. It is not the
 design: Urshanabi chooses its own interface, shapes and mechanisms,
 and several entries below are deliberately stricter than Elysium.
 
-The conformance suite (roadmap R-07) checks each property black-box,
-through a thin driver per system that translates the property into
-that system's own interface.
+The conformance suite (roadmap R-07) checks each property black-box
+against Urshanabi, through a thin driver that translates the property
+into Urshanabi's own interface. It is written test-first: each
+property's test lands with the feature that meets it, and is proved by
+a planted fault that makes it fail. No driver is written for Elysium.
 
 ## How to read an entry
 
@@ -342,7 +344,7 @@ while search returned the same ids as strings; through its mirror,
 both were strings.
 `test_object_detail_returns_every_visible_field_including_a_link`
 asserts the integer form. The property takes one representation
-everywhere, and that Elysium test is an expected divergence.
+everywhere, so that Elysium test asserts what the property forbids.
 
 **QUERY-09** Counts are the caller's own and differ between callers.
 Aggregation groups and sums; with no grouping it returns one result

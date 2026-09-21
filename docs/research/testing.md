@@ -26,9 +26,9 @@ are never the first line of defence.
 ## Around the layers
 
 - **Conformance** — the behaviour properties in
-  `conformance/BEHAVIOURS.md`, checked black-box through one driver per
-  system, so the same suite can run against Elysium and Urshanabi
-  (R-07).
+  `conformance/BEHAVIOURS.md`, checked black-box against Urshanabi
+  through one driver, written test-first; Elysium is the evidence that
+  each property is testable, not a target (R-07).
 - **Fuzzing** of every parser of external input.
 - **Mutation testing** on the core library, to prove the tests catch
   real faults.
