@@ -116,8 +116,10 @@ expensive once data or users exist.
 
 - **Urshanabi:** `conformance/BEHAVIOURS.md` implemented as a
   black-box HTTP suite, passing against Elysium first.
-- **Done when:** the suite passes against Elysium in CI, and flipping
-  one uniform-denial response in a test build fails it.
+- **Done when:** the suite passes against Elysium in CI apart from
+  the divergences `BEHAVIOURS.md` names, which are asserted as
+  expected failures; flipping one uniform-denial response in a test
+  build fails it.
 
 ### R-08 A request id on every route from the first route
 
@@ -215,6 +217,11 @@ expensive once data or users exist.
   its repository is publicly readable. [measured]
 - **Urshanabi:** private from the first commit, or licensed
   deliberately. An owner decision.
+- **Audit finding:** Urshanabi's own repository answers unauthenticated
+  requests today, so this roadmap and the security design in it are
+  publicly readable, and there is no licence file. [measured]
+- **Done when:** an unauthenticated request for the repository is
+  refused, or a licence file states the terms deliberately chosen.
 
 ### R-66 Stated scale objectives, each with a load test
 
@@ -228,8 +235,9 @@ expensive once data or users exist.
   latency at the 95th percentile, indexing lag, rows synced per hour
   and cell throughput. Every later scale item is measured against
   them.
-- **Done when:** a change that breaks an objective fails a scheduled
-  load run.
+- **Done when:** the objectives are written in Phase 0, each later
+  item that meets one adds its load test, and a change that breaks a
+  tested objective fails a scheduled load run.
 
 ### R-78 Consumer-driven contract tests
 
@@ -327,6 +335,15 @@ expensive once data or users exist.
 
 # Phase 1 — The read path
 
+**Order of work** (RULES.md §17 — what others depend on comes first):
+the security core, then serving, then the agent, then the rest.
+
+1. Security core: R-92, R-91, R-81, R-82, R-84, R-44 to R-48, R-67,
+   R-21, R-22, R-68, R-23, R-88, R-87.
+2. Serving: R-18, R-19, R-20, R-69, R-37, R-24, R-25, R-83, R-36.
+3. Agent: R-26, R-27, R-28, R-29, R-30, R-31, R-32, R-72.
+4. The rest: R-33, R-34, R-35, R-71.
+
 ### R-18 No shared in-process state
 
 - **Elysium:** per-object locks, the pending-write working copy, the
@@ -345,7 +362,9 @@ expensive once data or users exist.
   86% was the table-format library reloading metadata and decoding
   manifests, twice per search. [measured]
 - **Urshanabi:** table metadata cached per snapshot, one scan per
-  search, and lookups served by the query engine.
+  search, and lookups served by the query engine. This is the Phase 1
+  answer; if R-70 is authorized, the index takes over interactive
+  lookups in Phase 4.
 - **Done when:** a benchmark gate in CI fails if a mirror search
   regresses past a threshold set from the first measured baseline.
 
@@ -556,44 +575,11 @@ expensive once data or users exist.
   distributed compute, with published ceilings at each step.
   [precedent]
 - **Urshanabi:** the tier is chosen by estimated size, every limit is
-  published, and work past the last limit is refused by name.
+  published, and work past the last limit is refused by name. Phase 1
+  ships the first two tiers; the distributed tier arrives with R-75.
 - **Done when:** the same query answered in each tier returns
   identical results, and a query past the last limit is refused with
   a named reason.
-
-### R-70 An indexed object layer — PROPOSED, AWAITING THE OWNER
-
-- **Elysium:** meaning is resolved at read time and nothing is
-  indexed; its transform stage deliberately materialises no
-  per-type tables. Its identifier-keyed changelog and per-generation
-  snapshot pinning are real, working inputs an index would consume.
-  [code]
-- **Precedent:** an established platform separates indexing from
-  querying so each scales horizontally. Enterprise search names the
-  choice: early binding indexes permissions with content; late
-  binding checks each result at query time; systems combine them,
-  falling back to late binding when early cannot express a rule. An
-  authorization system at very large scale answers stale-permission
-  exposure with a freshness token: check against data at least as
-  fresh as a given moment. Incrementally maintained views run in
-  production, with modes where a read waits for changes to arrive.
-  [precedent]
-- **Urshanabi, proposed:** an indexer fed incrementally from the
-  changelog, and a separate query service. Early binding by default:
-  the index holds security values, so filtering, counting and paging
-  see visible rows only. A security-freshness watermark per object
-  type advances with every security-relevant change. When the index
-  is behind it, results are re-verified against the freshest source
-  and counts are reported as unavailable, never overstated. Live
-  reads remain available per type.
-- **What it costs:** exposure bounded by the watermark rather than
-  zero; custody of another copy of customer data; edits merged into
-  the index; indexing to operate.
-- **Owner:** [NEEDS OWNER] It reverses Elysium's read-time
-  resolution, so `RULES.md` H5 requires explicit authorization first.
-- **Done when:** after a reclassification, no member of the former
-  audience sees the object once the watermark has advanced, measured;
-  no count includes an invisible row.
 
 ### R-71 Aggregate inference is controlled
 
@@ -713,6 +699,68 @@ expensive once data or users exist.
 - **Done when:** a bundle or manifest containing a secret value fails
   validation, and a missing reference refuses to load by name.
 
+### R-44 Login input is bounded before anything persists
+
+*R-44 to R-48 and R-84 moved from Phase 3 by audit: Phase 1 ships a
+gateway people log into and internal user tokens (R-81), so both must
+be hardened from their first version, not after.*
+
+- **Elysium:** usernames and passwords had no length limit. Ten
+  unauthenticated requests grew the credentials database from 100 KB
+  to 16.3 MB, and an unbounded password makes every hash
+  arbitrarily expensive. [measured]
+- **Urshanabi:** both fields bounded at the edge.
+- **Done when:** an oversized login is rejected and the test asserts
+  no record was written.
+
+### R-45 Expiring state expires by construction
+
+- **Elysium:** failed-login records and expired sessions were never
+  deleted. [measured]
+- **Urshanabi:** both live in a store whose keys expire.
+- **Done when:** an expired entry is absent without any cleanup job
+  having run.
+
+### R-46 Session tokens hashed at rest
+
+- **Elysium:** stored in plain text, so reading the credentials store
+  equals hijacking every live session. [measured]
+- **Urshanabi:** only a hash of each token is stored.
+- **Done when:** a test reading the store finds no value that works
+  as a session cookie.
+
+### R-47 Idle timeout as well as absolute expiry
+
+- **Elysium:** a 24-hour absolute cap, no idle timeout; acknowledged.
+  [code]
+- **Urshanabi:** both.
+- **Done when:** a session idle past its limit is refused before its
+  absolute expiry.
+
+### R-48 Constant-time token comparison
+
+- **Elysium:** the anti-forgery check compares with ordinary
+  equality. Practically unexploitable, and free to fix. [code]
+- **Urshanabi:** constant-time comparison for every secret.
+- **Done when:** a source-level check finds every comparison of a
+  secret uses the constant-time function, with the test explaining
+  why a timing test cannot be made reliable.
+
+### R-84 A revoked user stops everywhere, quickly
+
+- **Elysium:** disabling a user ended their sessions; there were no
+  internal tokens to outlive them. [code]
+- **Precedent:** a review of 62 studies lists insufficient token
+  invalidation among recurring microservice vulnerabilities; the
+  stale-permission exposure it causes is a named problem in
+  large-scale authorization. [precedent]
+- **Urshanabi:** internal user tokens live for a bounded, short time;
+  disabling a user or revoking a grant publishes a revocation that
+  every enforcing service honours within a stated bound; high-risk
+  actions check revocation directly.
+- **Done when:** after a user is disabled, no service accepts their
+  token beyond the stated bound, measured.
+
 ---
 
 # Phase 2 — Writes
@@ -760,6 +808,8 @@ expensive once data or users exist.
 - **Elysium:** undecided. [docs]
 - **Urshanabi:** an owner decision, recorded before automations can
   propose writes.
+- **Done when:** the decision is recorded here, and a test enforces
+  it on an automation-proposed write.
 
 ### R-43 Nothing holds a stale slice of configuration
 
@@ -776,46 +826,6 @@ expensive once data or users exist.
 ---
 
 # Phase 3 — Identity and control plane
-
-### R-44 Login input is bounded before anything persists
-
-- **Elysium:** usernames and passwords had no length limit. Ten
-  unauthenticated requests grew the credentials database from 100 KB
-  to 16.3 MB, and an unbounded password makes every hash
-  arbitrarily expensive. [measured]
-- **Urshanabi:** both fields bounded at the edge.
-- **Done when:** an oversized login is rejected and the test asserts
-  no record was written.
-
-### R-45 Expiring state expires by construction
-
-- **Elysium:** failed-login records and expired sessions were never
-  deleted. [measured]
-- **Urshanabi:** both live in a store whose keys expire.
-- **Done when:** an expired entry is absent without any cleanup job
-  having run.
-
-### R-46 Session tokens hashed at rest
-
-- **Elysium:** stored in plain text, so reading the credentials store
-  equals hijacking every live session. [measured]
-- **Urshanabi:** only a hash of each token is stored.
-- **Done when:** a test reading the store finds no value that works
-  as a session cookie.
-
-### R-47 Idle timeout as well as absolute expiry
-
-- **Elysium:** a 24-hour absolute cap, no idle timeout; acknowledged.
-  [code]
-- **Urshanabi:** both.
-- **Done when:** a session idle past its limit is refused before its
-  absolute expiry.
-
-### R-48 Constant-time token comparison
-
-- **Elysium:** the anti-forgery check compares with ordinary
-  equality. Practically unexploitable, and free to fix. [code]
-- **Urshanabi:** constant-time comparison for every secret.
 
 ### R-49 Single sign-on first; passwords for break-glass
 
@@ -851,6 +861,8 @@ expensive once data or users exist.
   [docs]
 - **Urshanabi:** an owner decision between hosted, customer-cloud and
   disconnected cells, recorded before this phase starts.
+- **Done when:** the decision is recorded here, with the models that
+  are out of scope named.
 
 ### R-73 Metering, quotas and visible cost
 
@@ -877,21 +889,6 @@ expensive once data or users exist.
 - **Done when:** an export-then-import round trip preserves types,
   links and metric definitions.
 
-### R-84 A revoked user stops everywhere, quickly
-
-- **Elysium:** disabling a user ended their sessions; there were no
-  internal tokens to outlive them. [code]
-- **Precedent:** a review of 62 studies lists insufficient token
-  invalidation among recurring microservice vulnerabilities; the
-  stale-permission exposure it causes is a named problem in
-  large-scale authorization. [precedent]
-- **Urshanabi:** internal user tokens live for a bounded, short time;
-  disabling a user or revoking a grant publishes a revocation that
-  every enforcing service honours within a stated bound; high-risk
-  actions check revocation directly.
-- **Done when:** after a user is disabled, no service accepts their
-  token beyond the stated bound, measured.
-
 ---
 
 # Phase 4 — Sync and automation
@@ -903,7 +900,8 @@ expensive once data or users exist.
 - **Urshanabi:** sync streams in bounded batches, and refuses a table
   it cannot hold rather than being killed.
 - **Done when:** a 10-million-row table syncs under a fixed memory
-  limit in CI.
+  limit in CI, and the scale objective R-66 sets for sync is met by a
+  scheduled load run.
 
 ### R-54 A pointer is committed only after what it names is durable
 
@@ -1014,6 +1012,43 @@ expensive once data or users exist.
 - **Done when:** a source column changing type refuses the sync with a
   report naming the column.
 
+### R-70 An indexed object layer — PROPOSED, AWAITING THE OWNER
+
+*Moved from Phase 1 by audit: the indexer is fed by the changelog,
+which R-55 and R-56 build in this phase.*
+
+- **Elysium:** meaning is resolved at read time and nothing is
+  indexed; its transform stage deliberately materialises no
+  per-type tables. Its identifier-keyed changelog and per-generation
+  snapshot pinning are real, working inputs an index would consume.
+  [code]
+- **Precedent:** an established platform separates indexing from
+  querying so each scales horizontally. Enterprise search names the
+  choice: early binding indexes permissions with content; late
+  binding checks each result at query time; systems combine them,
+  falling back to late binding when early cannot express a rule. An
+  authorization system at very large scale answers stale-permission
+  exposure with a freshness token: check against data at least as
+  fresh as a given moment. Incrementally maintained views run in
+  production, with modes where a read waits for changes to arrive.
+  [precedent]
+- **Urshanabi, proposed:** an indexer fed incrementally from the
+  changelog, and a separate query service. Early binding by default:
+  the index holds security values, so filtering, counting and paging
+  see visible rows only. A security-freshness watermark per object
+  type advances with every security-relevant change. When the index
+  is behind it, results are re-verified against the freshest source
+  and counts are reported as unavailable, never overstated. Live
+  reads remain available per type.
+- **What it costs:** exposure bounded by the watermark rather than
+  zero; custody of another copy of customer data; edits merged into
+  the index; indexing to operate.
+- **Owner:** [NEEDS OWNER] It reverses Elysium's read-time
+  resolution, so `RULES.md` H5 requires explicit authorization first.
+- **Done when:** after a reclassification, no member of the former
+  audience sees the object once the watermark has advanced, measured;
+  no count includes an invisible row.
+
 ---
 
 # Phase 5 — Commercial hardening
@@ -1078,7 +1113,12 @@ expensive once data or users exist.
 
 ### R-65 An independent security audit and penetration test
 
-- **Urshanabi:** before the first external customer.
+- **Elysium:** reviewed once, externally, which found an
+  unauthenticated flaw its own suite had missed. [measured]
+- **Urshanabi:** before the first external customer, and after any
+  change to authentication, authorization or tenancy.
+- **Done when:** every finding is fixed or accepted in writing, and
+  each fix has a test that fails if it is reverted.
 
 ### R-77 Ephemeral infrastructure, per-workload egress
 
