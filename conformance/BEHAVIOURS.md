@@ -189,6 +189,9 @@ see, a type that does not exist, a MAC-denied match and no match.
 **Also verified for this specification:** a real type the caller
 cannot discover and an invented one produce identical search bodies,
 and both traces are empty.
+**Elysium meets this only below its scan ceiling.** Above it, the
+truncation flag can differ between a denied search and an empty one.
+See DENY-09.
 
 **DENY-02** Object detail returns the same shape for a nonexistent
 object and a MAC-denied one: the same field keys, every value null.
@@ -234,6 +237,25 @@ includes another's. *Evidence:*
 `test_a_request_trace_is_empty_for_a_request_you_did_not_make`,
 `test_another_user_cannot_read_your_trace`,
 `test_one_request_s_trace_does_not_include_another_s`. *Level:* http.
+
+**DENY-09** No signal in a response may depend on rows the caller
+cannot see: not a truncation flag, not a count or total, not a page
+boundary, and — as far as can be measured — not response time.
+Counts, totals and truncation are derived only from rows that passed
+the security check, and the security condition is applied before any
+condition the caller supplied, except operators on a reviewed list of
+those that cannot reveal what they are evaluated on. *Evidence:*
+**Elysium does not meet this.** Measured at its commit `5ddb031`:
+with the scan ceiling lowered to 2, a user who can see no
+transactions at all receives `scan_truncated: true`, on both read
+paths, because the ceiling bounds a scan taken before the security
+check wherever security is inherited through a link. Types whose
+security value is on the object itself do not leak. Precedent: a
+published study found row-level security measurably leaks the size of
+hidden row sets through timing whenever the caller's condition is
+evaluated first; a mature database orders the security condition
+first for exactly this reason. *Level:* http for the flag, with a
+fixture above the ceiling; oracle for timing.
 
 ---
 
@@ -281,8 +303,10 @@ ignored rather than scrambling the order. *Evidence:*
 `test_an_unknown_order_by_field_is_ignored_rather_than_scrambling`.
 *Level:* http.
 
-**QUERY-06** A search that stops at the scan ceiling says so, and
-still returns what it found. *Representation:* `scan_truncated`.
+**QUERY-06** A search that stops at its ceiling says so, and still
+returns what it found — where the ceiling counts only rows the caller
+may see, per DENY-09. A flag raised by invisible rows is a disclosure,
+not a report. *Representation:* `scan_truncated`.
 *Evidence:* `test_search_reports_truncation.py`. *Level:* internal —
 Elysium lowers the ceiling in-process; the suite needs a fixture
 large enough to reach it.
@@ -560,6 +584,9 @@ when they expire.
 internal — not observable over HTTP.
 
 **EXTRA-04** QUERY-08's link half: ids are strings on every read path.
+
+**EXTRA-05** DENY-09 in full: no truncation flag, count or total
+derived from rows the caller cannot see.
 
 ---
 
