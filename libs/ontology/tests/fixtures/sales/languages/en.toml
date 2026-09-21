@@ -10,3 +10,5 @@
 "RaiseCreditLimit" = { name = "Raise the credit limit" }
 "RaiseCreditLimit.new_limit" = { name = "New limit" }
 "TotalCredit" = { name = "Total credit" }
+"Customer.full_name" = { name = "Full name" }
+"RaiseCreditLimit.customer" = { name = "Customer" }

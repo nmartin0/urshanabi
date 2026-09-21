@@ -274,3 +274,105 @@ fn every_problem_is_reported_in_one_run() {
         "{found}"
     );
 }
+
+#[test]
+fn every_type_names_a_title() {
+    let d = copy();
+    edit(&d, "types/order.toml", "title       = \"order_id\"\n", "");
+    assert_refused(&d, "missing field `title`");
+}
+
+#[test]
+fn the_title_is_one_of_the_properties() {
+    let d = copy();
+    edit(
+        &d,
+        "types/order.toml",
+        "title       = \"order_id\"",
+        "title = \"reference\"",
+    );
+    assert_refused(&d, "the title \"reference\" is not one of its properties");
+}
+
+#[test]
+fn an_action_names_the_object_it_edits() {
+    let d = copy();
+    edit(
+        &d,
+        "actions/raise_credit_limit.toml",
+        "[[parameter]]\nname = \"customer\"\ntype = \"object<Customer>\"\n\n",
+        "",
+    );
+    for (lang, name) in [("en", "Customer"), ("es", "Cliente"), ("pt", "Cliente")] {
+        let entry = format!("\"RaiseCreditLimit.customer\" = {{ name = \"{name}\" }}\n");
+        edit(&d, &format!("languages/{lang}.toml"), &entry, "");
+    }
+    assert_refused(&d, "needs exactly one parameter of type object<Customer>");
+}
+
+#[test]
+fn an_action_sets_a_property_from_a_parameter_of_its_type() {
+    let d = copy();
+    edit(
+        &d,
+        "actions/raise_credit_limit.toml",
+        "name = \"new_limit\"\ntype = \"decimal\"",
+        "name = \"new_limit\"\ntype = \"float\"",
+    );
+    assert_refused(
+        &d,
+        "sets credit_limit, which is decimal, from new_limit, which is float",
+    );
+}
+
+#[test]
+fn an_object_parameter_refers_to_an_object_type() {
+    let d = copy();
+    edit(
+        &d,
+        "actions/raise_credit_limit.toml",
+        "type = \"object<Customer>\"",
+        "type = \"object<Client>\"",
+    );
+    assert_refused(&d, "refers to \"Client\", which is not an object type");
+}
+
+#[test]
+fn a_reserved_word_is_not_a_name() {
+    let d = copy();
+    edit(
+        &d,
+        "types/order.toml",
+        "name = \"total\"",
+        "name = \"primary_key\"",
+    );
+    assert_refused(&d, "\"primary_key\" is a reserved word");
+}
+
+#[test]
+fn a_name_is_shorter_than_one_hundred_characters() {
+    let d = copy();
+    let long = format!("T{}", "a".repeat(99));
+    edit(
+        &d,
+        "types/order.toml",
+        "name        = \"Order\"",
+        &format!("name = \"{long}\""),
+    );
+    assert_refused(&d, "a name must be shorter than 100 characters");
+}
+
+#[test]
+fn a_status_is_active_experimental_or_deprecated() {
+    let d = copy();
+    edit(
+        &d,
+        "types/customer.toml",
+        "status      = \"active\"",
+        "status = \"live\"",
+    );
+    assert_refused(
+        &d,
+        "status \"live\" must be one of active, experimental, deprecated",
+    );
+}

@@ -4,7 +4,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use crate::model::{ObjectType, Property};
+use crate::model::{ActionType, ObjectType, Property};
 use crate::{Ontology, Problem};
 
 /// The scalar property types.
@@ -25,6 +25,31 @@ const FRESHNESS: &[&str] = &["real-time", "near-real-time", "scheduled"];
 const CARDINALITY: &[&str] = &["one-to-one", "one-to-many", "many-to-one", "many-to-many"];
 const RISK: &[&str] = &["low", "high"];
 const AGGREGATION: &[&str] = &["count", "sum", "average", "min", "max"];
+const STATUS: &[&str] = &["active", "experimental", "deprecated"];
+/// Words no name may be, compared ignoring case and underscores,
+/// following the leading platform's reserved words.
+const RESERVED: &[&str] = &[
+    "ontology",
+    "object",
+    "property",
+    "link",
+    "relation",
+    "rid",
+    "primarykey",
+    "typeid",
+    "ontologyobject",
+];
+/// Names are shorter than this.
+const NAME_LIMIT: usize = 100;
+
+/// How a name must be written.
+#[derive(Clone, Copy)]
+enum Case {
+    /// Types, links, actions and metrics.
+    UpperCamel,
+    /// Properties and parameters.
+    LowerSnake,
+}
 
 /// Collects problems as the rules are checked.
 struct Report(Vec<Problem>);
@@ -60,7 +85,9 @@ pub(crate) fn validate(o: &Ontology) -> Vec<Problem> {
         object_type(t, &mut r);
     }
     links(o, &by_name, &mut r);
-    actions(o, &by_name, &mut r);
+    for a in &o.actions {
+        action(a, &by_name, &mut r);
+    }
     metrics(o, &by_name, &mut r);
     translations(o, &mut r);
     r.0
@@ -88,26 +115,68 @@ fn header(o: &Ontology, r: &mut Report) {
     }
 }
 
-/// Rule 1: names are unique within their kind and in `UpperCamelCase`.
+/// Rule 1: a name is written in its case, is shorter than the limit,
+/// and is not a reserved word.
+fn name(name: &str, case: Case, what: &str, place: &str, r: &mut Report) {
+    let written = match case {
+        Case::UpperCamel => upper_camel(name),
+        Case::LowerSnake => lower_snake(name),
+    };
+    if !written {
+        let style = match case {
+            Case::UpperCamel => "UpperCamelCase",
+            Case::LowerSnake => "lower_snake_case",
+        };
+        r.add(place, format!("a {what} name must be {style}"));
+    }
+    if name.len() >= NAME_LIMIT {
+        r.add(
+            place,
+            format!("a name must be shorter than {NAME_LIMIT} characters"),
+        );
+    }
+    if reserved(name) {
+        r.add(place, format!("{name:?} is a reserved word"));
+    }
+}
+
+/// Rule 1: names are unique within their kind.
 fn unique_names<'a>(names: impl Iterator<Item = &'a str>, kind: &str, r: &mut Report) {
     let mut seen = BTreeSet::new();
-    for name in names {
-        if !upper_camel(name) {
-            r.add(name, format!("a {kind} name must be UpperCamelCase"));
+    for n in names {
+        name(n, Case::UpperCamel, kind, n, r);
+        if !seen.insert(n) {
+            r.add(n, format!("two {kind}s share this name"));
         }
-        if !seen.insert(name) {
-            r.add(name, format!("two {kind}s share this name"));
-        }
+    }
+}
+
+/// A definition's lifecycle status, when declared, is a known one.
+fn status(value: Option<&String>, place: &str, r: &mut Report) {
+    if let Some(s) = value
+        && !STATUS.contains(&s.as_str())
+    {
+        r.add(
+            place,
+            format!("status {s:?} must be one of {}", STATUS.join(", ")),
+        );
     }
 }
 
 /// Rules 1 to 4 for one object type.
 fn object_type(t: &ObjectType, r: &mut Report) {
     let place = t.name.as_str();
+    status(t.status.as_ref(), place, r);
     // Rule 2: the source is in the curated layer. Whether the table
     // exists is checked against the table catalogue when one is given.
     if !t.source.starts_with("curated.") || t.source.split('.').count() < 3 {
-        r.add(place, format!("the source {:?} must name a curated-layer table, such as \"curated.sales.customers\"", t.source));
+        r.add(
+            place,
+            format!(
+                "the source {:?} must name a curated-layer table, such as \"curated.sales.customers\"",
+                t.source
+            ),
+        );
     }
     if !FRESHNESS.contains(&t.freshness.as_str()) {
         r.add(
@@ -122,12 +191,11 @@ fn object_type(t: &ObjectType, r: &mut Report) {
     let mut seen = BTreeSet::new();
     for p in &t.properties {
         let at = format!("{}.{}", t.name, p.name);
-        if !lower_snake(&p.name) {
-            r.add(&at, "a property name must be lower_snake_case");
-        }
+        name(&p.name, Case::LowerSnake, "property", &at, r);
         if !seen.insert(p.name.as_str()) {
             r.add(&at, "the property is declared twice");
         }
+        status(p.status.as_ref(), &at, r);
         property(p, &at, r);
     }
     if !seen.contains(t.primary_key.as_str()) {
@@ -138,6 +206,17 @@ fn object_type(t: &ObjectType, r: &mut Report) {
                 t.primary_key
             ),
         );
+    }
+    match find(t, &t.title) {
+        None => r.add(
+            place,
+            format!("the title {:?} is not one of its properties", t.title),
+        ),
+        Some(p) if p.kind.starts_with("array<") => r.add(
+            place,
+            format!("the title {:?} must hold one value, not a list", t.title),
+        ),
+        Some(_) => {}
     }
 }
 
@@ -152,10 +231,15 @@ fn property(p: &Property, at: &str, r: &mut Report) {
             None => r.add(at, "an editable property must declare reconcile"),
             Some(rule) if !reconcile_rule(rule) => r.add(
                 at,
-                format!("reconcile {rule:?} must be edit-persists, most-recent or source-priority:<source>"),
+                format!(
+                    "reconcile {rule:?} must be edit-persists, most-recent or source-priority:<source>"
+                ),
             ),
             Some(rule) if edit_only && rule != "edit-persists" => {
-                r.add(at, "a property that exists only through edits always keeps them: reconcile = \"edit-persists\"");
+                r.add(
+                    at,
+                    "a property that exists only through edits always keeps them: reconcile = \"edit-persists\"",
+                );
             }
             Some(_) => {}
         }
@@ -176,6 +260,7 @@ fn property(p: &Property, at: &str, r: &mut Report) {
 fn links(o: &Ontology, types: &BTreeMap<&str, &ObjectType>, r: &mut Report) {
     for l in &o.links {
         let at = l.name.as_str();
+        status(l.status.as_ref(), at, r);
         if !CARDINALITY.contains(&l.cardinality.as_str()) {
             r.add(
                 at,
@@ -235,55 +320,80 @@ fn links(o: &Ontology, types: &BTreeMap<&str, &ObjectType>, r: &mut Report) {
     }
 }
 
-/// Rule 4 for actions: they set only editable properties of the type
-/// they edit, from their own parameters.
-fn actions(o: &Ontology, types: &BTreeMap<&str, &ObjectType>, r: &mut Report) {
-    for a in &o.actions {
-        let at = a.name.as_str();
-        if !RISK.contains(&a.risk.as_str()) {
-            r.add(at, format!("risk {:?} must be low or high", a.risk));
+/// Rule 4 for an action: exactly one parameter names the object it
+/// edits, and each rule sets an editable property of that object from a
+/// parameter of the property's own type.
+fn action(a: &ActionType, types: &BTreeMap<&str, &ObjectType>, r: &mut Report) {
+    let at = a.name.as_str();
+    status(a.status.as_ref(), at, r);
+    if !RISK.contains(&a.risk.as_str()) {
+        r.add(at, format!("risk {:?} must be low or high", a.risk));
+    }
+    let mut params = BTreeMap::new();
+    for p in &a.parameters {
+        let pat = format!("{}.{}", a.name, p.name);
+        name(&p.name, Case::LowerSnake, "parameter", &pat, r);
+        if params.insert(p.name.as_str(), p.kind.as_str()).is_some() {
+            r.add(&pat, "the parameter is declared twice");
         }
-        let mut params = BTreeSet::new();
-        for p in &a.parameters {
-            let pat = format!("{}.{}", a.name, p.name);
-            if !lower_snake(&p.name) {
-                r.add(&pat, "a parameter name must be lower_snake_case");
+        match object_ref(&p.kind) {
+            Some(t) if !types.contains_key(t) => {
+                r.add(
+                    &pat,
+                    format!("refers to {t:?}, which is not an object type"),
+                );
             }
-            if !params.insert(p.name.as_str()) {
-                r.add(&pat, "the parameter is declared twice");
-            }
-            if !known_type(&p.kind) {
-                r.add(&pat, format!("unknown type {:?}", p.kind));
-            }
+            None if !known_type(&p.kind) => r.add(&pat, format!("unknown type {:?}", p.kind)),
+            _ => {}
         }
-        let Some(target) = types.get(a.edits.as_str()) else {
-            r.add(
-                at,
-                format!("edits {:?}, which is not an object type", a.edits),
-            );
-            continue;
-        };
-        for rule in &a.rules {
-            for (property, param) in &rule.set {
-                match find(target, property) {
-                    None => r.add(
-                        at,
-                        format!("sets {property:?}, which {} does not have", target.name),
+    }
+    let Some(target) = types.get(a.edits.as_str()) else {
+        r.add(
+            at,
+            format!("edits {:?}, which is not an object type", a.edits),
+        );
+        return;
+    };
+    let targets = params
+        .values()
+        .filter(|k| object_ref(k) == Some(a.edits.as_str()))
+        .count();
+    if targets != 1 {
+        r.add(
+            at,
+            format!(
+                "needs exactly one parameter of type object<{}> naming the object it edits, not {targets}",
+                a.edits
+            ),
+        );
+    }
+    for rule in &a.rules {
+        for (property, param) in &rule.set {
+            let p = find(target, property);
+            match p {
+                None => r.add(
+                    at,
+                    format!("sets {property:?}, which {} does not have", target.name),
+                ),
+                Some(p) if !p.editable => r.add(
+                    at,
+                    format!("sets {}.{property}, which is not editable", target.name),
+                ),
+                Some(_) => {}
+            }
+            match (params.get(param.as_str()), p) {
+                (None, _) => r.add(
+                    at,
+                    format!("sets {property} from {param:?}, which is not one of its parameters"),
+                ),
+                (Some(kind), Some(p)) if *kind != p.kind => r.add(
+                    at,
+                    format!(
+                        "sets {property}, which is {}, from {param}, which is {kind}",
+                        p.kind
                     ),
-                    Some(p) if !p.editable => r.add(
-                        at,
-                        format!("sets {}.{property}, which is not editable", target.name),
-                    ),
-                    Some(_) => {}
-                }
-                if !params.contains(param.as_str()) {
-                    r.add(
-                        at,
-                        format!(
-                            "sets {property} from {param:?}, which is not one of its parameters"
-                        ),
-                    );
-                }
+                ),
+                _ => {}
             }
         }
     }
@@ -293,6 +403,7 @@ fn actions(o: &Ontology, types: &BTreeMap<&str, &ObjectType>, r: &mut Report) {
 fn metrics(o: &Ontology, types: &BTreeMap<&str, &ObjectType>, r: &mut Report) {
     for m in &o.metrics {
         let at = m.name.as_str();
+        status(m.status.as_ref(), at, r);
         if !AGGREGATION.contains(&m.aggregation.as_str()) {
             r.add(
                 at,
@@ -399,11 +510,25 @@ fn known_type(kind: &str) -> bool {
     SCALARS.contains(&inner)
 }
 
+/// The type an `object<Type>` parameter refers to.
+fn object_ref(kind: &str) -> Option<&str> {
+    kind.strip_prefix("object<")?.strip_suffix('>')
+}
+
 fn reconcile_rule(rule: &str) -> bool {
     matches!(rule, "edit-persists" | "most-recent")
         || rule
             .strip_prefix("source-priority:")
             .is_some_and(|s| !s.is_empty())
+}
+
+fn reserved(name: &str) -> bool {
+    let folded: String = name
+        .chars()
+        .filter(|&c| c != '_')
+        .map(|c| c.to_ascii_lowercase())
+        .collect();
+    RESERVED.contains(&folded.as_str())
 }
 
 fn upper_camel(name: &str) -> bool {
@@ -445,11 +570,27 @@ mod tests {
     }
 
     #[test]
+    fn reserved_words_match_ignoring_case_and_underscores() {
+        assert!(reserved("Object"));
+        assert!(reserved("primary_key"));
+        assert!(reserved("TypeId"));
+        assert!(!reserved("customer"));
+        assert!(!reserved("objects"));
+    }
+
+    #[test]
     fn types_are_scalars_or_arrays_of_scalars() {
         assert!(known_type("civil_time"));
         assert!(known_type("array<date>"));
         assert!(!known_type("array<array<date>>"));
         assert!(!known_type("datetime"));
+        assert!(!known_type("object<Customer>"));
+    }
+
+    #[test]
+    fn object_references_name_their_type() {
+        assert_eq!(object_ref("object<Customer>"), Some("Customer"));
+        assert_eq!(object_ref("decimal"), None);
     }
 
     #[test]
@@ -465,6 +606,7 @@ mod tests {
     fn language_tags_follow_bcp_47_shape() {
         assert!(language_tag("es"));
         assert!(language_tag("pt-BR"));
+        assert!(language_tag("es-419"));
         assert!(!language_tag("Spanish"));
         assert!(!language_tag("e"));
     }

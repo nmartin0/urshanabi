@@ -128,7 +128,10 @@ any commercial system needs, whatever its category.
 - **Class:** foundation
 - **Status:** in progress — breaking changes fail CI
   (`contracts/script/test`); remaining: a test that fails when an unsafe
-  error argument is logged, with the first service's logger.
+  error argument is logged, with the first service's logger; and a
+  decimal type that crosses every contract exactly, never as a
+  floating-point number, which the ontology's decimal properties
+  require.
 - **Outcome:** internal calls defined in a schema-first binary
   interface language, with breaking-change checks in CI; the public HTTP
   description generated from it; the changelog and audit streams
@@ -1114,8 +1117,10 @@ then audit and operations.
   library loads it and enforces its rules, reporting every problem at
   once (`docs/ontology-format.md`, `libs/ontology/src/validate.rs`);
   remaining: checking declared classifications against lineage and
-  sources against the table catalogue, bundle signing, the allow-listed
-  manifest, and the check that only the library parses definitions.
+  sources against the table catalogue, a check refusing breaking changes
+  between versions, property visibility levels, bundle signing, the
+  allow-listed manifest, and the check that only the library parses
+  definitions.
 - **Outcome:** ontology and policy authored in version control,
   compiled and signed by the control plane, never edited around it, and
   published beside the data as an allow-listed manifest. The meaning of
@@ -1732,7 +1737,9 @@ then audit and operations.
 - **Status:** in progress — the format is specified openly, and every
   example in the specification is tested against the library
   (`docs/ontology-format.md`, `libs/ontology/tests/specification.rs`);
-  remaining: the export and its round-trip test.
+  remaining: metrics as expressive as the open specification's — ratios,
+  distinct counts, filters and several types — so the round trip
+  preserves them, then the export and its round-trip test.
 - **Outcome:** its own format is documented openly, and exports to the
   open specification.
 - **Practice and precedent:** lock-in is the most consistent criticism
@@ -2079,6 +2086,28 @@ enabled.
   declared rule dictates; and the winning source is visible on the
   field.
 
+
+### R-138 Actions reach the leading platform's breadth
+
+- **Class:** parity
+- **Status:** planned
+- **Outcome:** an action can create, modify, create-or-modify and
+  delete objects, create and delete many-to-many links, run a function,
+  call an external system, notify people and start a pipeline, each as a
+  rule in the ontology's format (`docs/ontology-format.md`). Submission
+  criteria decide who may submit an action and when, and a parameter may
+  take the submitting person or the submission time as its value. Today
+  an action only modifies the object it names (R-51).
+- **Practice and precedent:** the leading platform's action rules
+  create, modify, create-or-modify and delete objects, create and delete
+  many-to-many links, run functions, call external systems before or
+  after the edits, notify users, trigger builds and apply scenario
+  edits; one-to-many links change through their foreign-key property.
+  Actions carry submission criteria, and string and timestamp properties
+  can take the current user or submission time as fixed values.
+  [precedent]
+- **Done when:** each rule kind has a test that applies it and one
+  that refuses it when its submission criteria fail.
 
 ### R-103 Every change states the version it was based on
 

@@ -1,6 +1,7 @@
 name        = "Order"
 source      = "curated.sales.orders"
 primary_key = "order_id"
+title       = "order_id"
 freshness   = "real-time"
 
 [[property]]

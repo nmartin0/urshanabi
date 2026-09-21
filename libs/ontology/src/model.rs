@@ -28,10 +28,15 @@ pub struct ObjectType {
     pub source: String,
     /// The property that identifies each object.
     pub primary_key: String,
+    /// The property shown as each object's display name.
+    pub title: String,
     /// `real-time`, `near-real-time` or `scheduled` (roadmap R-107).
     pub freshness: String,
     /// A description in the source language.
     pub description: Option<String>,
+    /// `active`, `experimental` or `deprecated`; `experimental` when
+    /// absent.
+    pub status: Option<String>,
     /// The type's properties.
     #[serde(default, rename = "property")] // name-ok
     pub properties: Vec<Property>,
@@ -57,6 +62,9 @@ pub struct Property {
     pub column: Option<String>,
     /// A label raising the property above the one it inherits (R-76).
     pub classification: Option<String>,
+    /// `active`, `experimental` or `deprecated`; `experimental` when
+    /// absent.
+    pub status: Option<String>,
 }
 
 /// `ontology/links/<name>.toml`: one link type.
@@ -76,6 +84,9 @@ pub struct LinkType {
     pub keys: Vec<Key>,
     /// The curated join table of a many-to-many link.
     pub through: Option<String>,
+    /// `active`, `experimental` or `deprecated`; `experimental` when
+    /// absent.
+    pub status: Option<String>,
 }
 
 /// One property pair joining a link's two types.
@@ -96,8 +107,12 @@ pub struct ActionType {
     pub name: String,
     /// `low` or `high`; high-risk actions need a second person (R-42).
     pub risk: String,
-    /// The object type the action edits.
+    /// The object type the action edits; exactly one parameter,
+    /// typed `object<Type>`, names which object.
     pub edits: String,
+    /// `active`, `experimental` or `deprecated`; `experimental` when
+    /// absent.
+    pub status: Option<String>,
     /// The action's parameters.
     #[serde(default, rename = "parameter")] // name-ok
     pub parameters: Vec<Parameter>,
@@ -112,7 +127,8 @@ pub struct ActionType {
 pub struct Parameter {
     /// The parameter's stable name, in `lower_snake_case`.
     pub name: String,
-    /// The parameter's type, from the same set as a property's.
+    /// The parameter's type: a property's type, or `object<Type>` to
+    /// refer to an existing object.
     #[serde(rename = "type")] // name-ok
     pub kind: String,
 }
@@ -138,6 +154,9 @@ pub struct Metric {
     pub aggregation: String,
     /// The property aggregated; absent only for `count`.
     pub expression: Option<String>,
+    /// `active`, `experimental` or `deprecated`; `experimental` when
+    /// absent.
+    pub status: Option<String>,
 }
 
 /// One entry of a translation catalogue (roadmap R-130).

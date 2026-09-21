@@ -1,6 +1,8 @@
 name        = "Customer"
 source      = "curated.sales.customers"
 primary_key = "customer_id"
+title       = "full_name"
+status      = "active"
 freshness   = "near-real-time"
 description = "A person or organisation that buys from us."
 
@@ -8,6 +10,10 @@ description = "A person or organisation that buys from us."
 name           = "customer_id"
 type           = "string"
 classification = "internal"
+
+[[property]]
+name = "full_name"
+type = "text"
 
 [[property]]
 name      = "credit_limit"

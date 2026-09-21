@@ -3,6 +3,10 @@ risk  = "high"
 edits = "Customer"
 
 [[parameter]]
+name = "customer"
+type = "object<Customer>"
+
+[[parameter]]
 name = "new_limit"
 type = "decimal"
 
