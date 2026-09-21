@@ -1,0 +1,20 @@
+#!/bin/sh
+# script/check-workflows: the CI definitions are valid and free of
+# known security flaws: unpinned actions, dangerous triggers, excessive
+# permissions and untrusted input in commands (roadmap R-86).
+set -u
+cd "$(dirname "$0")/.." || exit 1
+for tool in actionlint zizmor; do  # name-ok
+    command -v "$tool" >/dev/null 2>&1 ||
+        { echo "FAIL: $tool is not installed; run script/bootstrap"; exit 1; }
+done
+set -- .github/workflows/*.yml  # name-ok
+[ -f "$1" ] || { echo "FAIL: no workflow definitions found"; exit 1; }
+
+failed=""
+actionlint "$@" || failed="$failed syntax"  # name-ok
+zizmor --offline --persona=pedantic .github/ || failed="$failed security"  # name-ok
+if [ -n "$failed" ]; then
+    echo "check-workflows FAILED:$failed"; exit 1
+fi
+echo "check-workflows: $# workflow definitions clean."
