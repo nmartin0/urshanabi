@@ -14,6 +14,9 @@ script/cibuild    # exactly what CI runs: bootstrap, test, test-integration
 - `test-integration` — every component's own `script/test-integration`.
 - `each-component NAME` — runs every component's `script/NAME`; the
   one place components are discovered.
+- `report-tool-updates` — reports any pinned tool with a newer release;
+  run weekly by its own workflow, never by `test`, so a new upstream
+  release cannot fail anyone's push.
 
 Repository checks, each runnable on its own:
 

@@ -1,0 +1,43 @@
+#!/bin/sh
+# script/report-tool-updates: report every pinned tool in
+# script/tools.lock that has a newer release. Run weekly by its own
+# workflow, not by script/test: a new upstream release must not fail
+# anyone's push. Exits 1 when an update is waiting or a tool cannot be
+# checked, so the weekly run shows it.
+set -u
+cd "$(dirname "$0")/.." || exit 1
+
+list=$(mktemp) || exit 1
+trap 'rm -f "$list"' EXIT
+# One line per tool: its pinned version and its release repository,
+# taken from the download URL.
+awk '$1 !~ /^#/ && NF >= 5 && !seen[$1]++ {
+    repo = $5; sub(/\/releases\/download\/.*$/, "", repo)
+    print $1, $2, repo
+}' script/tools.lock > "$list"
+[ -s "$list" ] || { echo "FAIL: script/tools.lock pins nothing"; exit 1; }
+
+status=0
+while read -r tool pinned repo; do
+    latest=$(git ls-remote --tags --refs "$repo" 2>/dev/null |  # name-ok
+        awk '{ t = $2; sub(/^refs\/tags\//, "", t); sub(/^v/, "", t)
+               if (t !~ /^[0-9]+\.[0-9]+\.[0-9]+$/) next
+               split(t, v, "."); key = sprintf("%09d%09d%09d", v[1], v[2], v[3])
+               if (key > best) { best = key; bestv = t } }
+             END { print bestv }')
+    if [ -z "$latest" ]; then
+        echo "CANNOT CHECK $tool: no releases found at $repo"; status=1
+    elif [ "$latest" = "$pinned" ]; then
+        echo "current  $tool $pinned"
+    else
+        newer=$(printf '%s\n%s\n' "$pinned" "$latest" | awk -F. '
+            { key[NR] = sprintf("%09d%09d%09d", $1, $2, $3) }
+            END { print (key[2] > key[1]) ? "yes" : "no" }')
+        if [ "$newer" = yes ]; then
+            echo "UPDATE   $tool: pinned $pinned, latest $latest"; status=1
+        else
+            echo "current  $tool $pinned (newest release tag is $latest)"
+        fi
+    fi
+done < "$list"
+exit "$status"

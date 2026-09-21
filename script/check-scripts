@@ -392,6 +392,26 @@ printf '#!/bin/sh\nexit 1\n' > "$t/contracts/script/test-integration"
 chmod +x "$t/contracts/script/test-integration"
 expect fail "a failing integration test fails test-integration" "$t/script/test-integration"
 
+
+# --- report-tool-updates: newer releases are reported (weekly) -------
+upstream() {  # upstream NAME PINNED TAG...: a tool whose repository has these tags
+    tree "$1" report-tool-updates
+    pinned=$2; shift 2
+    mkdir -p "$t/up" && printf 'release\n' > "$t/up/notes"
+    (cd "$t/up" && git init -q && commit_as_test first) || exit 1  # name-ok
+    for tag in "$@"; do (cd "$t/up" && git tag "$tag") || exit 1; done  # name-ok
+    printf 'fake %s linux-x86_64 00 file://%s/up/releases/download/v%s/fake.tar.gz fake\n' "$pinned" "$t" "$pinned" > "$t/script/tools.lock"  # name-ok
+}
+upstream u1 1.2.0 v1.0.0 v1.2.0
+expect pass "a tool on its newest release is current" "$t/script/report-tool-updates"
+upstream u2 1.9.0 v1.9.0 v1.10.0
+expect_msg fail "a newer release is reported, compared by number" "latest 1.10.0" "$t/script/report-tool-updates"
+upstream u3 1.0.0 v1.0.0 nightly-2026 v2.0.0-rc1
+expect pass "pre-releases and other tags are ignored" "$t/script/report-tool-updates"
+tree u4 report-tool-updates
+printf 'fake 1.0.0 linux-x86_64 00 file://%s/nowhere/releases/download/v1.0.0/f.tar.gz f\n' "$t" > "$t/script/tools.lock"  # name-ok
+expect_msg fail "a tool that cannot be checked fails" "CANNOT CHECK" "$t/script/report-tool-updates"
+
 # Guard: a self-test whose helper is missing or misspelled fails with
 # "not found" and records nothing. Count the calls written in this file
 # and require that every one ran.

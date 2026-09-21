@@ -2,3 +2,4 @@ script/names.list
 script/tools.lock
 .github/workflows/ci.yml
 .github/dependabot.yml
+.github/workflows/tool-updates.yml

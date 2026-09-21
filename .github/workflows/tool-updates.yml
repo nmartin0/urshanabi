@@ -1,0 +1,28 @@
+# Weekly report of newer releases for the tools pinned in
+# script/tools.lock. A failed run means an update is waiting.
+name: tool-updates
+
+on:
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: tool-updates
+  cancel-in-progress: true
+
+jobs:
+  report:
+    name: script/report-tool-updates
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: script/report-tool-updates
+        run: script/report-tool-updates
