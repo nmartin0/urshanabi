@@ -33,6 +33,7 @@ Nothing in a stage starts until what it depends on is done.
 - **Learned from Elysium** — evidence from the prototype, tagged by
   how it is known.
 - **Owner** — a decision the owner must make (RULES.md H8).
+- **Decision** — how an owner decision was settled, and when.
 - **Done when** — a test that fails if the outcome is removed.
 
 ## Evidence tags
@@ -259,8 +260,8 @@ any commercial system needs, whatever its category.
   unauthenticated requests today, so this roadmap and the security
   design in it are publicly readable, and there is no licence file.
   [measured]
-- **Owner:** [NEEDS OWNER] Private, or licensed deliberately. Urgent:
-  the repository is publicly readable today.
+- **Decision:** private (owner, 2026-09-21). The owner stated no
+  preference, so best practice for proprietary source decides.
 - **Done when:** an unauthenticated request for the repository is
   refused, or a licence file states the terms deliberately chosen.
 
@@ -393,19 +394,28 @@ any commercial system needs, whatever its category.
 - **Done when:** a cell running under an egress capture sends nothing
   outward over a full test cycle.
 
-### R-95 The interface component library is our own decision
+### R-95 The interface is our own design system
 
-- **Class:** foundation
-- **Outcome:** keep it for the first release behind our own component
-  wrappers, and decide deliberately whether to replace it — a
-  competitor's library carries its visual identity and its roadmap.
+- **Class:** improvement
+- **Outcome:** Urshanabi's own design system: layered design tokens
+  (primitive, semantic, component) and its own components, built on
+  unstyled, accessible behaviour primitives installed as ordinary
+  dependencies, never copied in (RULES.md H2). The aim is better, not
+  only different: the current accessibility standard at AA level, and
+  stated density and speed targets for the data-heavy screens.
 - **Learned from Elysium:** its interface is built on a component
   library published by the company whose product is the precedent.
   [code]
-- **Owner:** [NEEDS OWNER] Keep with an exit plan, or replace.
-- **Done when:** no screen imports the library directly; every use
-  passes through our own wrappers.
-
+- **Practice and precedent:** a product with its own design language
+  builds it as layered tokens on accessible primitives rather than
+  overriding a third-party look; teams that adopted a styled library
+  early report spending much of their time fighting it. The common
+  shortcut of copying component source into a project is excluded by
+  RULES.md H2. [precedent]
+- **Decision:** our own creation, but better (owner, 2026-09-21).
+- **Done when:** no screen imports the previous library; an
+  accessibility audit passes at AA; the density and speed targets are
+  met on the data-heavy screens.
 ---
 
 # Phase 1 — Data foundation: sourcing, pipelines, storage
@@ -444,11 +454,12 @@ and lineage.
 ### R-96 Pipelines run under an asset-aware data orchestrator
 
 - **Class:** parity
-- **Outcome:** pipelines are declared as data assets with their
-  dependencies, freshness and lineage, and an orchestrator keeps them
-  reconciled; events trigger runs and the orchestrator keeps the record.
-  Approvals and actions stay on durable execution (R-57); one engine
-  does not serve both.
+- **Outcome:** pipelines are declared in Urshanabi's own format, as
+  data assets with their dependencies, freshness, checks and lineage,
+  and compiled to a foundation-governed data orchestrator that keeps
+  them reconciled; events trigger runs and the orchestrator keeps the
+  record. Approvals and actions stay on durable execution (R-57); one
+  engine does not serve both.
 - **Practice and precedent:** data-pipeline orchestration and durable
   execution are distinct categories that teams routinely confuse. Data
   orchestrators model assets, lineage, freshness and dataset-aware
@@ -458,10 +469,14 @@ and lineage.
   [precedent]
 - **Learned from Elysium:** no scheduler; its roadmap found scheduling
   and running several workers to be one decision. [docs]
-- **Owner:** [NEEDS OWNER] Which orchestrator: a foundation-governed,
-  task-based standard that has gained asset-aware scheduling, or an
-  asset-first design whose steward changed hands in 2026. The research
-  leaves this roughly balanced (RULES.md H8).
+- **Decision:** the foundation-governed, task-based standard that has
+  gained asset-aware scheduling (owner, 2026-09-21). Chosen for
+  governance under RULES.md H4a: no company can take it private or
+  change its terms. The alternative fitted the asset model more
+  naturally but is owned by one company, acquired in 2026. Because
+  customers never touch the orchestrator and our own format compiles to
+  it, the design-fit gap is ours to absorb, and switching later stays a
+  migration, not a rebuild.
 - **Done when:** a failed upstream load marks every downstream asset
   stale, visibly, without that tracking having been built by hand.
 
@@ -590,8 +605,13 @@ and lineage.
   inference off by default with every merge approved, requires
   unmerging, preserves field provenance, and leaves the resolved link's
   own classification open. None of it is built. [docs]
-- **Owner:** [NEEDS OWNER] How the resolved link itself is classified,
-  once researched (RULES.md H7, H8).
+- **Decision:** settled by precedent (2026-09-21): the high-water
+  mark. A derived asset is as sensitive as its most sensitive input,
+  formally the least upper bound of their labels. Each merged field
+  keeps its own label; only the link itself takes the combined label of
+  the fields that established it, because the link reveals that those
+  records correspond. This avoids the rule's known failure, every record
+  drifting to the top level.
 - **Done when:** a declared join produces one subject whose fields
   keep their source classification, and an approved unmerge restores
   both.
@@ -818,12 +838,17 @@ then audit and operations.
   inputs. Its mirror answered in 10.96 ms against 1.03 ms live because
   it served point lookups from a lake format, which the index must not
   do. [code, measured]
-- **Owner:** [NEEDS OWNER] The index engine — a distributed engine
-  under neutral governance, or an embeddable library we would distribute
-  ourselves — is roughly balanced (RULES.md H8).
 - **What it costs:** exposure bounded by the watermark rather than
   zero; custody of another copy of customer data; edits merged into the
   index; indexing to operate.
+- **Decision:** settled by precedent (2026-09-21): a distributed
+  search engine under neutral foundation governance. Ontology serving
+  means frequent edits, point lookups and high query rates. The
+  embeddable alternative treats indexed data as immutable, was designed
+  for high-volume, low-query-rate logs, and its stewards moved to one
+  company's product in 2025. The leading platform's first object store
+  was built on a distributed document store and search engine, and
+  RULES.md H4a favours neutral governance.
 - **Done when:** after a reclassification, no member of the former
   audience sees the object once the watermark has advanced, measured; no
   count includes an invisible row.
@@ -999,22 +1024,26 @@ then audit and operations.
 - **Done when:** an export-then-import round trip preserves types,
   links and metric definitions.
 
-### R-101 Whether sources are ever served live — OPEN DECISION
+### R-101 Live access only to already-curated external data
 
-- **Class:** open decision
-- **Outcome:** undecided. The ontology is served from curated data. A
-  live mode — reading a source at query time, as virtual tables do —
-  would trade pipeline lag and data custody against source load, weaker
-  consistency and a second security path.
+- **Class:** parity
+- **Outcome:** the ontology is served from curated data. An external
+  table may be served live, without copying, only if it is already
+  curated in a governed store and meets the curated-layer contract
+  (R-98). Raw silos always pass through the pipelines, because serving
+  them live would skip the cleaning the product exists to do.
 - **Practice and precedent:** the leading platform offers virtual
-  tables beside its indexed objects, and access without copying is an
-  industry trend. [precedent]
+  tables beside its indexed objects. Access without copying is advised
+  where an organisation already holds curated datasets in a governed
+  warehouse; one virtualization vendor's own advice is to materialise
+  any heavily queried dataset; and virtualization without a semantic
+  layer is described as risky for an organisation. [precedent]
 - **Learned from Elysium:** resolved everything live by design, then
   made its mirror the default read path. [code]
-- **Owner:** [NEEDS OWNER] Roughly balanced (RULES.md H8). R-37
-  applies only if a live mode is chosen.
-- **Done when:** the decision is recorded here.
-
+- **Decision:** settled by precedent (2026-09-21).
+- **Done when:** binding a live external table without an accepted
+  curated-layer contract fails validation, and a raw source cannot be
+  bound live at all.
 ### ~~R-37 Multi-source reads run in parallel~~
 
 - **Retired.** Applies only if R-101 chooses a live mode; otherwise
@@ -1227,17 +1256,23 @@ enabled.
 - **Done when:** a condition matching past the cap produces one clear
   refusal, not a flood.
 
-### R-42 Four-eyes against automation is decided
+### R-42 Automated changes follow risk-based maker-checker
 
 - **Class:** parity
-- **Outcome:** an owner decision, recorded before automations can
-  propose writes.
+- **Outcome:** every action type declares its risk. An automation acts
+  as its owner, so a consequential action it proposes needs approval
+  from a human other than that owner; action types declared low-risk may
+  apply automatically. No one ever approves their own proposal.
 - **Learned from Elysium:** undecided. [docs]
-- **Owner:** [NEEDS OWNER] Whether an automation-proposed write needs
-  a second human approver.
-- **Done when:** the decision is recorded here, and a test enforces it
-  on an automation-proposed write.
-
+- **Practice and precedent:** maker-checker is required for sensitive
+  operations by banking regulators and by financial-reporting and
+  payment-card standards, with no self-approval; routine low-risk
+  actions approve quickly while high-risk ones route to the required
+  checker. [precedent]
+- **Decision:** settled by precedent (2026-09-21).
+- **Done when:** an automation-proposed consequential write waits for
+  a human other than the automation's owner; a declared low-risk type
+  applies automatically; self-approval is refused.
 ### R-43 Nothing holds a stale slice of configuration
 
 - **Class:** parity
