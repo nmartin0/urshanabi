@@ -13,7 +13,8 @@ map (RULES.md, Purpose).
 
 **How the roadmap is organised.** Stages in the order the product
 depends on them: foundations, then the data, then the ontology and its
-serving, then agents, actions, identity and tenancy, and hardening.
+serving, then agents, actions, identity and tenancy, hardening, and
+federation.
 Nothing in a stage starts until what it depends on is done.
 
 ## How to read an item
@@ -422,6 +423,45 @@ any commercial system needs, whatever its category.
 - **Done when:** no screen imports the previous library; an
   accessibility audit passes at AA; the density and speed targets are
   met on the data-heavy screens.
+### R-121 Every production build is publicly verifiable
+
+- **Class:** foundation
+- **Outcome:** the fingerprint of every production build is published
+  to the tamper-evident log (R-88), and every component's attestation is
+  checked against it, so a customer can verify exactly which code is
+  running on their data.
+- **Practice and precedent:** the strongest precedent for running on
+  machines the operator does not fully trust publishes every production
+  build for inspection, keeps a transparency log, and makes verifiable
+  transparency one of five core requirements. [precedent]
+- **Learned from Elysium:** published nothing about what ran. [code]
+- **Done when:** a customer can match a running component's
+  attestation to a published build fingerprint, and an unpublished build
+  fails attestation.
+
+### R-125 A compliance control matrix from the first commit
+
+- **Class:** foundation
+- **Outcome:** a maintained matrix maps every control Urshanabi
+  implements to the baselines its buyers use: the federal control
+  catalogue (SP 800-53 Rev. 5), the zero-trust architecture guidance (SP
+  800-207 and SP 800-207A), the microservice security series (SP
+  800-204), the secure software development framework (SP 800-218), and
+  the US health-data law's Security Rule (45 CFR Part 164, Subpart C),
+  designed to its proposed revision rather than the current text. Each
+  control names the roadmap item and the test that proves it.
+- **Practice and precedent:** the proposed revision of the health-data
+  Security Rule, not final as of mid-2026, makes encryption at rest and
+  in transit and multi-factor authentication mandatory, with scans every
+  six months, yearly penetration tests, 72-hour restoration and a yearly
+  asset inventory and network map; its core mandates are expected to
+  survive. The zero-trust guidance for cloud-native applications moves
+  security from network location to identity, enforced through gateways,
+  proxies and workload identities. [precedent]
+- **Learned from Elysium:** had no control mapping. [code]
+- **Done when:** every control in the matrix cites a test that passes
+  in CI, and a control without a test fails the build.
+
 ---
 
 # Phase 1 — Data foundation: sourcing, pipelines, storage
@@ -818,7 +858,9 @@ then audit and operations.
 - **Outcome:** internal user tokens live for a bounded, short time;
   disabling a user or revoking a grant publishes a revocation that every
   enforcing service honours within a stated bound; high-risk actions
-  check revocation directly.
+  check revocation directly. A departing person's access everywhere ends
+  within one hour, the strictest clock in the proposed revision of the
+  US health-data law's Security Rule.
 - **Practice and precedent:** a review of 62 studies lists
   insufficient token invalidation among recurring microservice
   vulnerabilities; the stale-permission exposure it causes is a named
@@ -1142,7 +1184,10 @@ then audit and operations.
   key exchange standardised as RFC 10024, internally and at the edge; a
   cryptographic inventory lists every key and algorithm in use;
   post-quantum signatures follow as their standards and libraries
-  mature.
+  mature. A cell that must use validated cryptography runs in validated
+  mode with classical key exchange, because the hybrid algorithm is not
+  yet in validated modules; every other cell uses the hybrid exchange,
+  and validated cells switch when validated modules include it.
 - **Practice and precedent:** the hybrid exchange is the default in
   major browsers and in one services-language standard library since its
   2025 release; a national security algorithm timeline recommends hybrid
@@ -1155,6 +1200,62 @@ then audit and operations.
 - **Done when:** every internal and external connection negotiates the
   hybrid exchange, and a component that cannot fails the inventory
   check.
+
+### R-119 No single machine can reach everyone's data
+
+- **Class:** foundation
+- **Outcome:** no service instance holds standing credentials for all
+  data. Credentials are short-lived and scoped to one tenant and one
+  request, and requests are distributed so that nobody can steer a
+  chosen user's work onto a machine they control.
+- **Practice and precedent:** the strongest precedent requires that
+  compromising one node must not let an attacker target a particular
+  user, even with physical attacks in the supply chain, contrasting it
+  with the common design in which every application server holds
+  credentials for the whole database. [precedent]
+- **Learned from Elysium:** one process held credentials for every
+  source. [code]
+- **Done when:** a compromised query-service instance, simulated, can
+  read only the requests it happens to be serving, and cannot choose
+  which user's requests it receives.
+
+### R-120 Stateless work and no privileged runtime access
+
+- **Class:** foundation
+- **Outcome:** services keep no customer plaintext once a request
+  completes, and production workloads have no shell, debugger or
+  administrative path; operators observe them only through reviewed,
+  structured channels.
+- **Practice and precedent:** the same precedent requires stateless
+  computation and that no staff member can extend their privilege, even
+  during an outage. [precedent]
+- **Learned from Elysium:** anyone with the host could inspect the
+  process. [code]
+- **Done when:** a production image contains no shell or debugging
+  tool, and a memory scan after a request finds none of its plaintext.
+
+### R-126 The mesh fits the cell
+
+- **Class:** foundation
+- **Outcome:** standard cells use a sidecar-less service mesh for
+  mutual TLS with the hybrid post-quantum exchange and identity-based
+  policy. Confidential cells terminate encryption inside each protected
+  workload, never in a shared per-node proxy, and issue mesh
+  certificates only to workloads that pass attestation. Our own services
+  can also run post-quantum TLS in-process.
+- **Practice and precedent:** the zero-trust guidance for cloud-native
+  applications places enforcement in a service mesh with workload
+  identities; the sidecar-less mode runs one proxy per node and supports
+  the hybrid exchange when configured, though not yet in
+  validated-cryptography mode, and a failure of that shared proxy
+  affects every workload on the node. A confidential mesh issues
+  certificates only to attested workloads and terminates TLS in a proxy
+  inside each protected pod; a per-node proxy outside the protected
+  boundary would see plaintext. [precedent]
+- **Learned from Elysium:** one process, no mesh. [code]
+- **Done when:** in a confidential cell, no process outside a
+  protected workload ever holds plaintext traffic, verified by test; in
+  a standard cell, every connection negotiates the hybrid exchange.
 
 ### R-25 Say how authoritative a count is
 
@@ -1610,7 +1711,11 @@ one deployment into a product.
 
 - **Class:** parity
 - **Outcome:** federated sign-on, directory provisioning and
-  multi-factor authentication through an identity provider.
+  multi-factor authentication through an identity provider. Multi-factor
+  authentication is mandatory for every account that can reach regulated
+  data, and people reached through federation are identity-proofed to
+  identity assurance level 2 and authenticator assurance level 2 of SP
+  800-63.
 - **Learned from Elysium:** local passwords were the only login.
   [code]
 - **Done when:** a provisioned user signs in, and deprovisioning ends
@@ -1661,7 +1766,10 @@ one deployment into a product.
   hardware-isolated confidential environments, and every workload must
   prove by remote attestation that it is genuine, unmodified code on
   genuine hardware before the key service releases any key; other cells
-  may enable the same.
+  may enable the same. Confidential computing is never the only
+  protection: physical interposer attacks in 2025 and 2026 extracted
+  attestation keys and broke integrity on fully updated hardware, so
+  R-119 to R-122 limit what any single compromised machine can reach.
 - **Practice and precedent:** hardware-isolated confidential computing
   is a production default across mainstream servers and major clouds in
   2026, with overhead reported below 5 percent for one of the two main
@@ -1673,6 +1781,24 @@ one deployment into a product.
 - **Done when:** a workload whose attestation fails receives no keys,
   and an operator with host access cannot read tenant data from memory,
   verified by test.
+
+### R-122 Physical trust caps what a cell may hold
+
+- **Class:** foundation
+- **Outcome:** every cell declares the physical trust of its hardware
+  and site, and that sets the highest classification it may hold: a cell
+  whose machines could be physically accessed by an adversary never
+  holds data above its ceiling, whatever its software protections.
+- **Practice and precedent:** confidential-computing threat models
+  have always excluded physical attacks; in 2025 an interposer built for
+  under 1,000 dollars extracted attestation keys from fully updated
+  servers and forged attestations, and in September 2026 an active
+  interposer costing under 200 dollars broke integrity on up-to-date
+  hardware. [precedent]
+- **Learned from Elysium:** no classification ceilings of any kind.
+  [code]
+- **Done when:** labelling a cell's site as physically untrusted
+  refuses any data above its ceiling, at ingestion and at peering.
 
 ---
 
@@ -1729,7 +1855,8 @@ What an independent reviewer and a first customer will check.
 ### R-64 Restore is exercised, not assumed
 
 - **Class:** foundation
-- **Outcome:** backups are restored and checked on a schedule.
+- **Outcome:** backups are restored and checked on a schedule. The
+  stated restoration target is 72 hours at most.
 - **Learned from Elysium:** backup existed before restore did. [docs,
   fixed late]
 - **Done when:** a scheduled job restores the latest backup and runs
@@ -1739,7 +1866,9 @@ What an independent reviewer and a first customer will check.
 
 - **Class:** foundation
 - **Outcome:** before the first external customer, and after any
-  change to authentication, authorization or tenancy.
+  change to authentication, authorization or tenancy. Vulnerability
+  scans run at least every six months and penetration tests at least
+  every twelve.
 - **Learned from Elysium:** reviewed once, externally, which found an
   unauthenticated flaw its own suite had missed. [measured]
 - **Done when:** every finding is fixed or accepted in writing, and
@@ -1758,3 +1887,100 @@ What an independent reviewer and a first customer will check.
   engine refusing to attach other databases. [code]
 - **Done when:** a container past its maximum age is replaced, and a
   workload's connection to an undeclared host is refused.
+### R-123 Asset inventory and network map, yearly
+
+- **Class:** foundation
+- **Outcome:** a machine-generated inventory of every component,
+  dependency, key and data flow, with a network map, is reviewed at
+  least every twelve months and on every significant change.
+- **Practice and precedent:** the proposed revision of the health-data
+  Security Rule requires both, reviewed at least every twelve months.
+  [precedent]
+- **Learned from Elysium:** none. [code]
+- **Done when:** the inventory is regenerated in CI and a component
+  missing from it fails the build.
+
+### R-124 Ready to be a health-data business associate
+
+- **Class:** foundation
+- **Outcome:** Urshanabi can sign business associate agreements: its
+  controls, breach notification, subcontractor terms and data return or
+  destruction are documented and meet the Security Rule, so health
+  customers can put regulated data into it.
+- **Practice and precedent:** a service that holds a covered entity's
+  health data is its business associate and must meet the Security Rule;
+  the proposed revision strengthens business-associate oversight.
+  [precedent]
+- **Learned from Elysium:** never handled regulated health data.
+  [docs]
+- **Done when:** a template agreement exists, and every obligation in
+  it maps to a control in the matrix (R-125).
+
+---
+
+# Phase 7 — Federation
+
+Reaching beyond one installation: sharing with other organisations
+under policy, and searching systems where they live. Designed in from
+the start so earlier work never blocks it; built after the product is
+established.
+
+### R-117 Installations peer under enforceable policy
+
+- **Class:** improvement
+- **Outcome:** separate installations — ours or any other conforming
+  participant's — share selected objects over the open dataspace
+  protocol being standardised through ISO/IEC. Each connection declares
+  which types may flow, in which direction, and a classification
+  ceiling; usage conditions travel with the data and are enforced by the
+  recipient; exchange continues over low-bandwidth or disconnected links
+  by queueing; schemas stay in step through signed bundles; conflicting
+  values reconcile under R-102; classifications follow the data (R-76).
+  Designed now: identifiers are translatable between installations,
+  labels are portable, and nothing in the data model assumes a single
+  installation.
+- **Practice and precedent:** the leading platform peers objects
+  between its own installations over proprietary connections that set
+  allowed types, direction and a classification ceiling, and keep
+  working when disconnected. Data spaces, defined in ISO/IEC 20151,
+  share data between organisations under agreed policies, protocols and
+  semantic models; their open protocol and trust protocol have been
+  submitted for international standardisation, and a foundation-governed
+  reference connector negotiates contracts, enforces usage policies and
+  audits exchanges in production ecosystems. [precedent]
+- **Learned from Elysium:** a single installation with no sharing.
+  [code]
+- **Decision:** peering is in scope, designed now and built later
+  (owner, 2026-09-21).
+- **Done when:** two installations exchange an object type under a
+  ceiling, an object above the ceiling never crosses, and a conforming
+  third-party participant can exchange with Urshanabi.
+
+### R-118 Federated search, promoted through the pipelines
+
+- **Class:** parity
+- **Outcome:** opt-in per source, Urshanabi can search external
+  systems in place. Results are marked external and unverified, cannot
+  be acted on, and are filtered both by the source's own permissions —
+  searching as the user where the source allows — and by a
+  classification ceiling per source; no count or result reveals anything
+  the user cannot see (DENY-09). Every federated request states its
+  purpose of use, and federated users are identity-proofed (R-49).
+  Bringing a record in runs it through the pipelines, so everything in
+  the ontology stays curated. Each source has time limits, rate limits
+  and full audit.
+- **Practice and precedent:** the US national health-data exchange
+  framework is a network of networks: a discovery request is broadcast,
+  matching records are retrieved where they live, every request states
+  its purpose, users are identity-proofed to SP 800-63 IAL2 and AAL2,
+  and it reached about 500 million records by February 2026. The leading
+  platform lets users search external systems and promote records into
+  its ontology, each datum tethered to its source. [precedent]
+- **Learned from Elysium:** read only its own sources and mirror.
+  [code]
+- **Decision:** federated search is in scope, opt-in per source,
+  following the health-exchange model (owner, 2026-09-21).
+- **Done when:** a federated search returns external results marked
+  unverified, a request without a stated purpose is refused, an
+  unpromoted result cannot be acted on, and a promoted record appears
+  only after its pipeline checks pass.
