@@ -134,6 +134,25 @@ any commercial system needs, whatever its category.
   reach a log. [precedent]
 - **Learned from Elysium:** one process; contracts were function
   signatures.
+- **Decision:** the schema-first binary interface language at its
+  version 3 syntax, its standard RPC protocol between services, and that
+  protocol's browser-compatible variant at the gateway (owner,
+  2026-09-21), chosen over a fully foundation-governed pair of HTTP and
+  event description standards. The language is steered by one company,
+  and the RPC protocol, though hosted by a foundation, largely by the
+  same one; the toolchain CLI and the frontend runtime come from a
+  second company. Accepted because the format is open, permissively
+  licensed and independently implemented, including in the
+  implementations we use; the alternative's specifications are
+  foundation-governed, but its tools rest largely on volunteers, it
+  lacks typed binary contracts and streaming, and bulk data (R-114)
+  needs the RPC protocol regardless. Portability guardrails, each
+  enforced by `contracts/script/test`: version 3 syntax only; no imports
+  beyond the language's own well-known types; no hosted registry and no
+  remote generation plugins; the strictest breaking-change category.
+  Each single-company piece has a register entry and an exit. The public
+  HTTP description is chosen with the gateway, and the event
+  descriptions with the first stream.
 - **Done when:** removing a field from a contract fails CI, and
   logging an unsafe error argument fails a test.
 
@@ -261,8 +280,10 @@ any commercial system needs, whatever its category.
   unauthenticated requests today, so this roadmap and the security
   design in it are publicly readable, and there is no licence file.
   [measured]
-- **Decision:** private (owner, 2026-09-21). The owner stated no
-  preference, so best practice for proprietary source decides.
+- **Decision:** public for the time being (owner, 2026-09-21),
+  replacing the earlier decision to make it private. With no licence
+  file, default copyright applies: the code may be read but not reused.
+  Still open: a licence, or a return to private.
 - **Done when:** an unauthenticated request for the repository is
   refused, or a licence file states the terms deliberately chosen.
 

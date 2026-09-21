@@ -27,3 +27,5 @@ jobs:
           fetch-depth: 0
       - name: script/cibuild
         run: script/cibuild
+        env:
+          CONTRACTS_BREAKING_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}

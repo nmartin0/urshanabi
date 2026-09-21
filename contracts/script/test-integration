@@ -1,0 +1,5 @@
+#!/bin/sh
+# contracts/script/test-integration: contracts have no runtime, so there
+# is nothing to integrate; their consumers' contract tests live with
+# each service (roadmap R-78).
+echo "contracts: no integration tests; contracts have no runtime."

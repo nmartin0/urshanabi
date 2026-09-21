@@ -185,6 +185,65 @@ expect fail "a checksum mismatch is refused" "$t/script/bootstrap"
 if [ ! -e "$t/.tools/bin/fake" ]; then passed=$((passed + 1))
 else failed="$failed [nothing is installed on mismatch]"; echo "SELF-TEST FAILED: nothing is installed on mismatch"; fi
 
+# --- contracts: breaking changes and guardrails (roadmap R-06) -----
+# expect_msg pass|fail DESCRIPTION PATTERN COMMAND...: as expect, and
+# the output must also contain PATTERN, so the right check caught it.
+expect_msg() {
+    want=$1; what=$2; pattern=$3; shift 3
+    expect "$want" "$what" "$@"
+    if ! grep -q "$pattern" "$log"; then
+        echo "SELF-TEST FAILED: $what (output lacks \"$pattern\")"
+        sed 's/^/    /' "$log"
+        failed="$failed [$what: message]"
+    fi
+}
+# commit_as_test MESSAGE: commit everything in the current repository.
+commit_as_test() {
+    git add -A && git -c user.name=t -c user.email=t commit -q -m "$1"  # name-ok
+}
+contracts() {
+    tree "$1"
+    mkdir -p "$t/contracts/script" "$t/contracts/urshanabi/common/v1"
+    cp "$repo/contracts/buf.yaml" "$t/contracts/"  # name-ok
+    cp "$repo/contracts/script/test" "$t/contracts/script/"
+    cp "$repo/contracts/urshanabi/common/v1/errors.proto" \
+        "$t/contracts/urshanabi/common/v1/"
+    (cd "$t" && commit_as_test base) || exit 1
+}
+commit_all() {
+    (cd "$t" && commit_as_test change) || exit 1
+}
+proto="contracts/urshanabi/common/v1/errors.proto"
+
+contracts c1
+expect pass "unchanged contracts pass" "$t/contracts/script/test"
+contracts c2
+sed -i.bak '/string value = 2;/d' "$t/$proto" && rm -f "$t/$proto.bak"
+commit_all
+expect_msg fail "a committed field removal fails" "contracts FAILED: breaking" "$t/contracts/script/test"
+contracts c3
+sed -i.bak '/string value = 2;/d' "$t/$proto" && rm -f "$t/$proto.bak"
+expect_msg fail "an uncommitted field removal fails" "contracts FAILED: breaking" "$t/contracts/script/test"
+contracts c4
+awk '{ print } /string value = 2;/ { print "  string note = 3;" }' "$t/$proto" > "$t/p" && mv "$t/p" "$t/$proto"
+commit_all
+expect pass "adding a field passes" "$t/contracts/script/test"
+contracts c5
+sed -i.bak '/string value = 2;/d' "$t/$proto" && rm -f "$t/$proto.bak"
+commit_all
+first=$(cd "$t" && git rev-list --max-parents=0 HEAD)  # name-ok
+expect_msg fail "a removal is caught against a given base" "contracts FAILED: breaking" \
+    env CONTRACTS_BREAKING_BASE="$first" "$t/contracts/script/test"
+contracts c6
+sed -i.bak 's/syntax = "proto3";/syntax = "proto2";/' "$t/$proto" && rm -f "$t/$proto.bak"
+expect_msg fail "older syntax breaks a guardrail" "GUARDRAIL.*version 3 syntax" "$t/contracts/script/test"
+contracts c7
+awk '{ print } /^package / { print ""; print "import \"vendor/status.proto\";" }' "$t/$proto" > "$t/p" && mv "$t/p" "$t/$proto"
+expect_msg fail "an outside import breaks a guardrail" "GUARDRAIL.*imports from outside" "$t/contracts/script/test"
+contracts c8
+printf 'deps:\n  - registry.example/some/module\n' >> "$t/contracts/buf.yaml"  # name-ok
+expect_msg fail "a hosted dependency breaks a guardrail" "GUARDRAIL: no dependency on hosted" "$t/contracts/script/test"
+
 if [ -n "$failed" ]; then
     echo "check-scripts FAILED:$failed"
     exit 1

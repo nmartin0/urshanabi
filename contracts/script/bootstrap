@@ -1,0 +1,14 @@
+#!/bin/sh
+# contracts/script/bootstrap: the contract toolchain is installed by the
+# top-level script/bootstrap; confirm it is present.
+set -u
+cd "$(dirname "$0")/.." || exit 1
+root=$(cd .. && pwd) || exit 1
+PATH="$root/.tools/bin:$PATH"
+export PATH
+if command -v buf >/dev/null 2>&1; then  # name-ok
+    echo "contracts: toolchain present."
+else
+    echo "FAIL: the contract toolchain is missing; run script/bootstrap"
+    exit 1
+fi

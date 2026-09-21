@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package urshanabi.common.v1;
+
+// ErrorDetail travels inside every error a service returns. Its
+// arguments are split by whether they may be logged: services log
+// safe_args and never unsafe_args, so the contract itself decides what
+// can reach a log (roadmap R-06).
+message ErrorDetail {
+  // A stable, machine-readable reason, such as "OBJECT_NOT_FOUND".
+  string reason = 1;
+  // Arguments that may appear in logs: identifiers, counts, and the
+  // names of types and fields. Never data values.
+  repeated ErrorArgument safe_args = 2;
+  // Arguments that must never be logged: anything that could contain
+  // customer data, credentials or query text.
+  repeated ErrorArgument unsafe_args = 3;
+}
+
+// ErrorArgument is one named value attached to an error.
+message ErrorArgument {
+  string name = 1;
+  string value = 2;
+}

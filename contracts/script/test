@@ -1,0 +1,73 @@
+#!/bin/sh
+# contracts/script/test: the contracts are formatted, linted, keep the
+# portability guardrails, and break nothing (roadmap R-06). Reports
+# every failure together.
+#
+# The breaking-change comparison is made against CONTRACTS_BREAKING_BASE
+# if set (CI sets it to the commit a change is based on); otherwise
+# against HEAD when the contracts have uncommitted changes, or HEAD~1.
+set -u
+cd "$(dirname "$0")/.." || exit 1
+root=$(cd .. && pwd) || exit 1
+PATH="$root/.tools/bin:$PATH"
+export PATH
+command -v buf >/dev/null 2>&1 ||  # name-ok
+    { echo "FAIL: the contract toolchain is missing; run script/bootstrap"; exit 1; }
+
+failed=""
+buf format --diff --exit-code . || failed="$failed format"  # name-ok
+buf lint . || failed="$failed lint"  # name-ok
+
+# Guardrails.
+list=$(mktemp) || exit 1
+trap 'rm -f "$list"' EXIT
+find . -name '*.proto' -type f > "$list"
+if [ ! -s "$list" ]; then
+    echo "FAIL: no contracts found"; failed="$failed empty"
+fi
+while IFS= read -r f; do
+    if ! grep -q '^syntax = "proto3";$' "$f"; then
+        echo "GUARDRAIL $f: must use version 3 syntax"
+        failed="$failed syntax"
+    fi
+    outside=$(grep '^import ' "$f" | grep -v -E '^import (public )?"(urshanabi|google/protobuf)/')  # name-ok
+    if [ -n "$outside" ]; then
+        echo "GUARDRAIL $f: imports from outside our contracts: $outside"
+        failed="$failed imports"
+    fi
+done < "$list"
+if grep -q -E '^[[:space:]]*deps:' buf.yaml || [ -e buf.lock ]; then  # name-ok
+    echo "GUARDRAIL: no dependency on hosted modules"
+    failed="$failed hosted"
+fi
+for gen in buf.gen.yaml buf.gen.yml; do  # name-ok
+    if [ -e "$gen" ] && grep -q -E '^[[:space:]]*-?[[:space:]]*remote:' "$gen"; then
+        echo "GUARDRAIL $gen: no remote generation plugins"
+        failed="$failed remote"
+    fi
+done
+
+# Breaking changes.
+base=${CONTRACTS_BREAKING_BASE:-}
+if [ -z "$base" ]; then
+    if ! git diff --quiet HEAD -- . 2>/dev/null ||  # name-ok
+       [ -n "$(git ls-files -o --exclude-standard -- .)" ]; then  # name-ok
+        base=HEAD
+    else
+        base=HEAD~1
+    fi
+fi
+earlier=$(git -C "$root" ls-tree -r --name-only "$base" -- contracts 2>/dev/null |  # name-ok
+    grep -c '\.proto$')
+if [ "${earlier:-0}" -gt 0 ]; then
+    echo "Comparing the contracts with $base"
+    buf breaking . --against "$root/.git#ref=$base,subdir=contracts" ||  # name-ok
+        failed="$failed breaking"
+else
+    echo "No earlier contracts at $base; nothing to compare."
+fi
+
+if [ -n "$failed" ]; then
+    echo "contracts FAILED:$failed"; exit 1
+fi
+echo "contracts: formatted, linted, within the guardrails, nothing broken."
