@@ -632,6 +632,10 @@ points them to this file, as other large repositories now do.
 - **SQL** is linted and formatted like any other code.
 - **Contracts** are linted, formatted and checked for breaking
   changes (roadmap R-06).
+- **Time, in every language.** UTC is the one timezone (roadmap
+  R-128): each language's linter forbids calls that read the host's
+  local time, wherever the linter can express it, and date-sensitive
+  tests run under three timezones (R-14).
 
 ## E4. Test in layers, weighted toward the boundaries.
 

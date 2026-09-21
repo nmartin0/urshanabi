@@ -27,7 +27,12 @@ Decided by the owner, so that no single company can strand Urshanabi
 ## Conventions every service follows
 
 - **Errors** carry an `urshanabi.common.v1.ErrorDetail`. Only its
-  `safe_args` may be logged.
+  `safe_args` may be logged. Services never send sentences meant for
+  people: the edge renders each `reason` in the reader's language
+  (R-129).
+- **Time** is UTC (R-128): every instant uses the standard UTC
+  timestamp type. A future civil time is carried as its local
+  date-time and timezone identifier; a calendar date as a date.
 - **Request id** (R-08): every request carries an `x-request-id` header;
   a service generates one if absent and passes it on every call it
   makes.

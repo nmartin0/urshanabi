@@ -237,14 +237,51 @@ any commercial system needs, whatever its category.
 - **Done when:** the volume fixture exercises every paging and
   truncation path in `BEHAVIOURS.md`.
 
-### R-14 Tests pin a non-UTC timezone
+### R-14 Tests prove no code depends on the host's timezone
 
 - **Class:** foundation
-- **Outcome:** CI runs date-sensitive tests in one zone behind UTC and
-  one observing daylight saving.
+- **Outcome:** date-sensitive tests run three times: under UTC, under
+  a zone behind UTC, and under a zone observing daylight saving. The
+  zone is set by the test scripts themselves, so a local run and CI run
+  behave the same (`RULES.md` E5). Correct UTC-only code passes in every
+  zone; code that reads the host's local time fails.
+- **Practice and precedent:** code that accidentally uses the
+  machine's local time looks correct on a machine set to UTC, because
+  the two coincide there. One team's daily reports were shifted by five
+  hours for a year because CI and staging ran in UTC while production
+  did not. Established projects run their tests under non-UTC zones,
+  including a daylight-saving one, and set the zone in the test runner
+  rather than only in CI so local runs are covered too. [precedent]
 - **Learned from Elysium:** its method notes that a UTC container
   hides every timezone bug. [docs]
-- **Done when:** a deliberate local-time conversion fails in both.
+- **Done when:** a deliberate local-time conversion fails under both
+  non-UTC zones, and passes under UTC alone.
+
+### R-128 UTC is the one timezone
+
+- **Class:** foundation
+- **Outcome:** every instant is stored, processed, compared and
+  transmitted in UTC: in contracts as the standard UTC timestamp type,
+  in text as an RFC 3339 timestamp ending in Z. Only the edge converts
+  to local time, for the person reading it, using their chosen timezone.
+  No code asks the host for its timezone. Two exceptions are stored as
+  what they are: a future civil time, such as an automation every day at
+  9am in one city or a deadline set in a jurisdiction's local time, is
+  kept as its local date-time and timezone identifier, with its UTC
+  instant derived and recomputed whenever the timezone database changes;
+  and a calendar date is a date, not a timestamp.
+- **Practice and precedent:** machine-generated timestamps are
+  instants, and storing them in UTC is sound; but converting future
+  local times to UTC goes wrong when governments change timezone rules,
+  so the local time and zone are kept as the truth and the instant
+  derived from them. An insurer that stored coverage end dates as
+  timestamps found there was no single instant at which coverage ends
+  everywhere. [precedent]
+- **Learned from Elysium:** timestamps were UTC in its own records but
+  untested against other zones. [code]
+- **Done when:** every timestamp crossing a contract is UTC, and an
+  automation scheduled for 9am local time still runs at 9am local time
+  after a simulated timezone-rule change.
 
 ### R-15 Documentation that cannot silently drift
 
@@ -444,6 +481,35 @@ any commercial system needs, whatever its category.
 - **Done when:** no screen imports the previous library; an
   accessibility audit passes at AA; the density and speed targets are
   met on the data-heavy screens.
+### R-129 Every word on screen is translatable
+
+- **Class:** parity
+- **Outcome:** every string the interface shows lives in a message
+  catalogue, written in the standard message syntax with plural and
+  gender rules, never in code. English, Spanish and Portuguese ship
+  first; adding a language is adding a catalogue. Dates, numbers,
+  plurals and sort order come from the standard Unicode locale data
+  built into every browser, applied to UTC instants in each person's
+  timezone (R-128). Errors reach the interface as a stable reason and
+  safe arguments, and the interface renders the sentence in the reader's
+  language. Layouts use direction-neutral styling, so right-to-left
+  languages mirror correctly. A person's language comes from their own
+  setting, then their browser.
+- **Practice and precedent:** the Unicode locale data is used by all
+  major browsers and phones. The newer version of the standard message
+  syntax became a stable specification in 2025, but its implementations
+  remain previews and production use is rare, so messages use the
+  established syntax, which the new version's data model can represent.
+  The leading platform lets application builders translate fixed text in
+  its application builder, but only listed kinds of text. A
+  pseudo-language that lengthens and marks every string is a standard
+  test for hard-coded text and truncation. [precedent]
+- **Learned from Elysium:** every string was English, written inline.
+  [code]
+- **Done when:** switching to Spanish or Portuguese leaves no
+  untranslated string, verified in CI by the pseudo-language, and every
+  error a service returns renders in the reader's language.
+
 ### R-121 Every production build is publicly verifiable
 
 - **Class:** foundation
@@ -877,6 +943,23 @@ then audit and operations.
   published manifest contains nothing outside its allow-list; and a
   check fails if any component other than the shared library parses
   ontology definitions.
+### R-130 The ontology speaks every supported language
+
+- **Class:** improvement
+- **Outcome:** every object type, property, link type and action
+  carries display names and descriptions per language in the ontology
+  itself, authored with it (R-51) and checked for completeness. Every
+  screen and every agent inherits them, so an ontology translated once
+  is translated everywhere.
+- **Practice and precedent:** the leading platform translates text
+  inside individual applications rather than in the ontology they share;
+  no evidence was found that its ontology's own names are translatable.
+  [precedent]
+- **Learned from Elysium:** had no translation of any kind. [code]
+- **Done when:** a type missing a supported language's display name
+  fails ontology validation, and a Spanish user sees Spanish type names
+  on every screen and in agent answers.
+
 ### R-81 Services authenticate each other
 
 - **Class:** foundation
@@ -1227,6 +1310,27 @@ then audit and operations.
 - **Done when:** a plan exported in the standard representation and
   re-imported produces identical results.
 
+### R-131 Search works across languages
+
+- **Class:** foundation
+- **Outcome:** every text field carries a language tag, set from
+  source metadata or detected, and is processed with that language's
+  rules for keyword search. Semantic search uses multilingual
+  embeddings, so a query in one language finds relevant records written
+  in another. Results say which language each record is in, and a
+  person's own language is preferred without hiding others.
+- **Practice and precedent:** the chosen serving engine supports
+  several languages in one schema but not cross-lingual retrieval by
+  itself; its documentation recommends multilingual embeddings for that.
+  Research found models trained for cross-lingual retrieval consistently
+  beat keyword matching and translating documents first, but quality
+  varies widely between models and language pairs. [precedent]
+- **Learned from Elysium:** indexed text without language awareness.
+  [code]
+- **Done when:** relevance is measured per supported language and
+  across each pair, against stated targets, and a query in Portuguese
+  finds a matching English record.
+
 ### R-112 Key exchange is post-quantum hybrid
 
 - **Class:** foundation
@@ -1451,6 +1555,21 @@ protocol, and through Urshanabi's own agent.
 - **Done when:** an external agent client, authenticated as a user,
   sees exactly what that user sees: the uniform-denial properties pass
   through the protocol.
+
+### R-132 Agents work in the person's language
+
+- **Class:** foundation
+- **Outcome:** the agent reads questions and answers in the person's
+  language, using the ontology's translated names (R-130); every agent
+  evaluation runs in each supported language, and a language whose rates
+  fall below target is not offered.
+- **Practice and precedent:** model quality varies by language, so
+  evaluation per language, not an English result assumed to carry over,
+  is the standard for multilingual agents. [precedent]
+- **Learned from Elysium:** its agent answered in English only. [code]
+- **Done when:** the evaluation suite reports rates per language, and
+  a Spanish question receives a Spanish answer naming Spanish type
+  names.
 
 ### R-115 Agents work with other organisations' agents
 
