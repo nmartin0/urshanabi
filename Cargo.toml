@@ -1,0 +1,29 @@
+# The one workspace for every systems-language component (RULES.md E2):
+# one dependency set, one lockfile, shared lints.
+[workspace]
+resolver = "3"
+members = ["services/query"]
+
+[workspace.package]
+edition = "2024"
+# The oldest toolchain the workspace is verified on; CI builds with the
+# toolchain pinned in rust-toolchain.toml.
+rust-version = "1.91"
+publish = false
+
+[workspace.dependencies]
+prost = "0.14.4"
+prost-types = "0.14.4"
+tonic = "0.14.6"
+tonic-prost = "0.14.6"
+tonic-prost-build = "0.14.6"
+tokio = { version = "1.53.1", features = ["macros", "rt-multi-thread", "net", "signal", "time"] }
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.23", default-features = false, features = ["fmt", "std"] }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_docs = "warn"
+
+[workspace.lints.clippy]
+pedantic = { level = "warn", priority = -1 }

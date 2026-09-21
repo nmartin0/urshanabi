@@ -1,0 +1,9 @@
+#!/bin/sh
+# services/query/script/test-integration: the tests that start the real
+# server and call it over the network.
+set -u
+cd "$(dirname "$0")/../../.." || exit 1
+PATH="$PWD/.tools/bin:$PATH"
+export PATH
+cargo test --locked -p query --test '*' || { echo "query: integration tests FAILED"; exit 1; }  # name-ok
+echo "query: integration tests passed."

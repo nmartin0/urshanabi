@@ -1,0 +1,16 @@
+#!/bin/sh
+# services/query/script/bootstrap: install the systems-language toolchain
+# pinned in rust-toolchain.toml when its installer is present, as in CI;
+# otherwise require a toolchain on the PATH. The contract toolchain comes
+# from the top-level script/bootstrap.
+set -u
+cd "$(dirname "$0")/../../.." || exit 1
+if command -v rustup >/dev/null 2>&1; then  # name-ok
+    rustup toolchain install || exit 1  # name-ok
+fi
+if ! command -v cargo >/dev/null 2>&1; then  # name-ok
+    echo "FAIL: no systems-language toolchain is installed"
+    exit 1
+fi
+[ -x .tools/bin/buf ] || { echo "FAIL: the contract toolchain is missing; run script/bootstrap"; exit 1; }  # name-ok
+echo "query: toolchain present."

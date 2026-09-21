@@ -1,0 +1,5 @@
+# The exact systems-language toolchain CI builds with (RULES.md E3).
+[toolchain]
+channel = "1.98.1"
+components = ["rustfmt", "clippy"]
+profile = "minimal"

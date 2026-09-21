@@ -192,7 +192,10 @@ any commercial system needs, whatever its category.
 ### R-08 A request id on every route from the first route
 
 - **Class:** foundation
-- **Status:** planned
+- **Status:** in progress — the query service logs the caller's
+  request id, refusing any that could forge log lines
+  (`services/query/src/service.rs`); remaining: the gateway assigning
+  one on every route.
 - **Outcome:** every request carries an id from the gateway through
   every service, into every audit record and log line, with traces,
   metrics and logs emitted to a vendor-neutral telemetry standard.
@@ -220,9 +223,11 @@ any commercial system needs, whatever its category.
 ### R-10 Reproducible installs, exactly
 
 - **Class:** foundation
-- **Status:** in progress — tools are pinned and checksum-verified
-  (`script/tools.lock`); remaining: hashed lockfiles for each language,
-  and a check that fails when a manifest changes without its lockfile.
+- **Status:** in progress — tools are pinned and checksum-verified,
+  and the systems-language workspace builds only from its committed
+  lockfile (`script/tools.lock`, `Cargo.lock`); remaining: hashed
+  lockfiles for the other languages, each refusing a manifest changed
+  without its lockfile.
 - **Outcome:** every language role installs from a hashed lockfile; CI
   fails when a lockfile drifts from its manifest.
 - **Learned from Elysium:** dependencies were bounded rather than
@@ -234,7 +239,9 @@ any commercial system needs, whatever its category.
 ### R-11 Generated state is never tracked
 
 - **Class:** foundation
-- **Status:** planned
+- **Status:** in progress — contract code is generated at build time
+  and never committed (`services/query/build.rs`); remaining: a check
+  that runs every generator and fails unless the tree stays clean.
 - **Outcome:** ignore rules cover every generated path before the
   first generator exists.
 - **Learned from Elysium:** generated databases and lake files were
@@ -644,9 +651,10 @@ any commercial system needs, whatever its category.
 ### R-121 Every production build is publicly verifiable
 
 - **Class:** foundation
-- **Status:** in progress — the build-identity contract exists
-  (`contracts/urshanabi/build/v1/build.proto`); remaining: publishing
-  fingerprints and checking attestations against them.
+- **Status:** in progress — the query service serves its build
+  identity from the contract (`services/query/src/identity.rs`);
+  remaining: the gateway reporting every component, published
+  fingerprints, and attestation checked against them.
 - **Outcome:** the fingerprint of every production build is published
   to the tamper-evident log (R-88), and every component's attestation is
   checked against it, so a customer can verify exactly which code is
@@ -689,9 +697,11 @@ any commercial system needs, whatever its category.
 
 - **Class:** foundation
 - **Status:** in progress — repository gates, boundaries and the
-  scripts' own tests run in CI (`script/check-scripts`); remaining: each
-  language's six gates and the dependency-rung check, with the first
-  components.
+  scripts' own tests run in CI, and the systems language's gates run on
+  its first component, each broken on purpose by a self-test
+  (`script/check-scripts`, `services/query/script/test`); remaining: the
+  other languages' gates with their first components, and the
+  dependency-rung check.
 - **Outcome:** `RULES.md` part three is enforced in CI from the first
   commit: every dependency records its rung on the standard-library
   ladder (E1); every component is its own project, with dependencies

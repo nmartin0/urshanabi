@@ -98,6 +98,14 @@ component contracts
 printf 'code\n' > "$t/contracts/main.src"
 expect fail "code without a test script fails" "$t/script/each-component" test
 
+tree ignored each-component
+component contracts 'exit 0'
+mkdir -p "$t/target/debug" && printf 'built\n' > "$t/target/debug/output"
+printf '/target/\n' > "$t/.gitignore"
+expect pass "an ignored build-output directory is not a component" "$t/script/each-component" test
+rm "$t/.gitignore"
+expect fail "the same directory, not ignored, is refused" "$t/script/each-component" test
+
 tree grouped each-component
 mkdir -p "$t/services/a" && printf '# a\n' > "$t/services/a/README.md"
 printf 'code\n' > "$t/services/a/main.src"
@@ -188,6 +196,11 @@ status d11 "finished"
 expect_msg fail "an unknown status fails" "unknown status" "$t/script/check-docs"
 docs d12; sed '/^- \*\*Status:\*\*/d' "$t/ROADMAP.md" > "$t/r" && mv "$t/r" "$t/ROADMAP.md"
 expect_msg fail "an item without a status fails" "has no status" "$t/script/check-docs"
+
+names n9 "Plain text."; printf '#[allow(zork::pedantic)] // name-ok\n' > "$t/lib.rs"
+expect pass "a marker on an attribute line is honoured" "$t/script/check-names"
+names n10 "Plain text."; printf '# uses zork # name-ok\n' > "$t/notes.sh"
+expect_msg fail "a marker on a shell comment line is still refused" "not allowed here" "$t/script/check-names"
 
 # --- check-boundaries -------------------------------------------------
 tree b1 check-boundaries
@@ -411,6 +424,37 @@ expect pass "pre-releases and other tags are ignored" "$t/script/report-tool-upd
 tree u4 report-tool-updates
 printf 'fake 1.0.0 linux-x86_64 00 file://%s/nowhere/releases/download/v1.0.0/f.tar.gz f\n' "$t" > "$t/script/tools.lock"  # name-ok
 expect_msg fail "a tool that cannot be checked fails" "CANNOT CHECK" "$t/script/report-tool-updates"
+
+
+# --- the systems-language gates (R-127): each fails on a planted fault
+# The real component script, run against a dependency-free crate that
+# compiles in seconds.
+syscrate() {  # syscrate NAME: a one-crate workspace with the query component's gates
+    tree "$1"
+    mkdir -p "$t/services/query/src" "$t/services/query/script" "$t/.tools/bin"
+    cp "$repo/services/query/script/test" "$t/services/query/script/" || exit 1
+    cp "$repo/deny.toml" "$repo/rust-toolchain.toml" "$t/" || exit 1  # name-ok
+    ln -s "$repo/.tools/bin/cargo-deny" "$t/.tools/bin/cargo-deny"  # name-ok
+    printf '[workspace]\nresolver = "3"\nmembers = ["services/query"]\n\n[workspace.lints.rust]\nunsafe_code = "forbid"\nmissing_docs = "warn"\n\n[workspace.lints.clippy]\npedantic = { level = "warn", priority = -1 }\n' > "$t/Cargo.toml"  # name-ok
+    printf '[package]\nname = "query"\nversion = "0.0.0"\nedition = "2024"\npublish = false\n\n[lints]\nworkspace = true\n' > "$t/services/query/Cargo.toml"  # name-ok
+    printf '//! A fixture.\n\n/// Doubles a number.\n#[must_use]\npub fn double(n: i64) -> i64 {\n    n * 2\n}\n\n#[cfg(test)]\nmod tests {\n    #[test]\n    fn doubles() {\n        assert_eq!(super::double(2), 4);\n    }\n}\n' > "$t/services/query/src/lib.rs"
+    (cd "$t" && cargo generate-lockfile --offline -q) || exit 1  # name-ok
+}
+plant() {  # plant SED-EXPRESSION FILE: change one line of the fixture
+    sed "$1" "$t/$2" > "$t/planted" && mv "$t/planted" "$t/$2"
+}
+syscrate r1
+expect pass "a clean crate passes every systems-language gate" "$t/services/query/script/test"
+syscrate r2; plant 's/n \* 2/n*2/' services/query/src/lib.rs
+expect_msg fail "badly formatted code fails the formatting gate" "FAILED: formatting" "$t/services/query/script/test"
+syscrate r3; printf '\n/// Returns one.\n#[must_use]\npub fn one() -> i64 {\n    return 1;\n}\n' >> "$t/services/query/src/lib.rs"
+expect_msg fail "a lint violation fails the lints gate" "FAILED: lints" "$t/services/query/script/test"
+syscrate r4; printf '\nfn unused() {}\n' >> "$t/services/query/src/lib.rs"
+expect_msg fail "dead code fails the lints gate" "FAILED: lints" "$t/services/query/script/test"
+syscrate r5; plant 's/double(2), 4/double(2), 5/' services/query/src/lib.rs
+expect_msg fail "a failing test fails the tests gate" "FAILED: tests" "$t/services/query/script/test"
+syscrate r6; plant 's/^publish = false$/publish = true\nlicense = "GPL-3.0-only"/' services/query/Cargo.toml
+expect_msg fail "a disallowed licence fails the dependencies gate" "FAILED: dependencies" "$t/services/query/script/test"
 
 # Guard: a self-test whose helper is missing or misspelled fails with
 # "not found" and records nothing. Count the calls written in this file

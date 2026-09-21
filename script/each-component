@@ -50,6 +50,8 @@ for top in */; do
     case "$top" in
         docs|script) continue ;;
     esac
+    # Build output and other ignored directories are never components.
+    if git check-ignore -q "$top"; then continue; fi  # name-ok
     if [ -f "$top/README.md" ]; then
         run_one "$top"
         continue

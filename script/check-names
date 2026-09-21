@@ -56,7 +56,9 @@ BEGIN {
         while ((getline raw < path) > 0) {
             ln++
             if (raw ~ /(#|\/\/|--) name-ok$/) {
-                if (md || raw ~ /^[ \t]*(#|\/\/|--)/) {
+                # A line that is only a comment; "#[" and "#![" open
+                # attributes, which are code.
+                if (md || raw ~ /^[ \t]*(\/\/|--|#$|#[^[!])/) {
                     printf "FAIL %s:%d: name-ok marker not allowed here\n", path, ln
                     bad = 1
                 } else { excused++; continue }
