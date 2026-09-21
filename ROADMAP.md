@@ -337,9 +337,15 @@ any commercial system needs, whatever its category.
 
 - **Class:** foundation
 - **Outcome:** every service contract exists from Phase 0, but the
-  first release ships as few processes as the security boundaries allow.
-  The write-credential boundary justifies its own process; other splits
-  wait for a measurement.
+  first release ships as few processes as the security boundaries allow,
+  and each process exists because of the secrets it alone holds:
+  ingestion (source credentials), indexer (index write), query service
+  (index read), write service (data write and writeback), model gateway
+  (model-provider keys), control plane (signing keys), audit service
+  (the audit log), gateway (sessions), and the agent, which holds no
+  data secrets because it handles untrusted model output. Approvals and
+  automations share one workflow worker because they share one engine
+  and the same secrets. Other splits wait for a measurement.
 - **Practice and precedent:** over-splitting before a domain justifies
   it adds coordination cost with no benefit; the standard advice is to
   start modular and split when pressure proves it necessary, and to
@@ -539,6 +545,28 @@ and lineage.
 - **Done when:** a source column changing type refuses the sync with a
   report naming the column.
 
+### R-104 One writer per table, three layers deep
+
+- **Class:** foundation
+- **Outcome:** each table has one owning pipeline; the orchestrator
+  runs at most one run of it at a time; and the table format's own
+  conflict check remains the guarantee, so correctness never depends on
+  the first two. Commits are batched rather than frequent.
+- **Practice and precedent:** the table format commits by atomically
+  swapping a pointer and, on collision, re-validating and retrying;
+  practitioners report retries becoming the bottleneck with many writers
+  committing every few seconds. The orchestrator can cap runs per
+  pipeline and access to shared resources, but that cap has been
+  silently not honoured in past versions and is enforced only by its
+  scheduler. Other-language implementations of the table format have
+  shipped false conflicts and missing retries. [precedent]
+- **Learned from Elysium:** a single process wrote every table, so
+  collisions could not occur. [code]
+- **Done when:** two runs forced to overlap on one table produce one
+  success and one clean retry or refusal, never a lost change; the
+  systems-language table library's retry and validation are verified
+  before any pipeline depends on them.
+
 ### R-97 Transformations are versioned, tested code
 
 - **Class:** parity
@@ -682,11 +710,17 @@ then audit and operations.
 
 - **Class:** parity
 - **Outcome:** ontology and policy authored in version control,
-  compiled and signed by the control plane, never edited around it.
-  Published beside the data as an allow-listed manifest.
-- **Done when:** the control plane refuses an unsigned bundle, and the
-  published manifest contains nothing outside its allow-list.
-
+  compiled and signed by the control plane, never edited around it, and
+  published beside the data as an allow-listed manifest. The meaning of
+  the ontology is implemented exactly once, in one shared library in the
+  systems language, used by the compiler, the indexer, the query service
+  and the write service; the control plane calls the compiler rather
+  than re-implementing it, so no two components can disagree about what
+  the ontology means.
+- **Done when:** the control plane refuses an unsigned bundle; the
+  published manifest contains nothing outside its allow-list; and a
+  check fails if any component other than the shared library parses
+  ontology definitions.
 ### R-81 Services authenticate each other
 
 - **Class:** foundation
@@ -925,6 +959,44 @@ then audit and operations.
   values as integers while search returned the same ids as strings.
   [measured]
 - **Done when:** QUERY-08 passes in full.
+
+### R-105 The index never goes backwards
+
+- **Class:** foundation
+- **Outcome:** every write to the search index carries the source
+  change's sequence number as its version, and the index rejects any
+  write older than what it holds. Rejected writes are counted, and a
+  rising count raises an alarm.
+- **Practice and precedent:** the search engine accepts externally
+  supplied versions and rejects lower ones, for distributed processes
+  that cannot guarantee order. One migration of 850 million documents
+  found its default reindex would have silently overwritten 13.5 million
+  newer documents with stale copies while reporting zero failures.
+  [precedent]
+- **Learned from Elysium:** nothing indexed, so the problem never
+  arose. [code]
+- **Done when:** delivering two updates to one object in reverse order
+  leaves the newer one in the index, and the stale one is counted.
+
+
+### R-106 Every state-changing request can be safely retried
+
+- **Class:** foundation
+- **Outcome:** every state-changing endpoint accepts an idempotency
+  key. The key, a fingerprint of the request and the response are stored
+  durably, scoped to the caller, for a day. A retry returns the stored
+  response; the same key with a different request, or while the first is
+  still running, is refused.
+- **Practice and precedent:** payment platforms established the
+  pattern before a standards draft described it; keys typically expire
+  after a day, and a request fingerprint catches a key reused with
+  different content. The draft defines distinct errors for a missing
+  required key, a key reused with a different request, and a retry that
+  arrives while the first is in flight. [precedent]
+- **Learned from Elysium:** no retry protection; a repeated request
+  was a new request. [code]
+- **Done when:** a request retried after a dropped connection is
+  applied once, and reusing a key with a different body is refused.
 
 ### R-25 Say how authoritative a count is
 
@@ -1214,18 +1286,33 @@ enabled.
 ### R-57 Approvals and actions run on durable execution, once
 
 - **Class:** parity
-- **Outcome:** the durable workflow engine runs approvals, expiries
-  and action retries with single-execution semantics. Pipelines are
-  scheduled by the data orchestrator (R-96).
+- **Outcome:** a foundation-governed durable workflow engine runs
+  approvals, expiries, action retries and automations with
+  single-execution semantics. Its partition count cannot be changed
+  after creation, so it is sized from the scale objectives (R-66) before
+  first use; small cells keep its history in the relational database,
+  and large ones move to a store that grows by adding machines.
+  Pipelines are scheduled by the data orchestrator (R-96).
 - **Practice and precedent:** durable execution suits long-running
   business processes such as approvals, with exactly-once runs and
-  persistent state; it is a different category from data orchestration
-  (R-96). [precedent]
+  persistent state, and is a different category from data orchestration
+  (R-96). The chosen engine's design is proven at over 12 billion
+  workflow runs and 270 billion steps a month at one large deployment.
+  Published tests of the same design on a relational database found the
+  database, not the engine, to be the limit. [precedent]
 - **Learned from Elysium:** no scheduler; its own roadmap found the
   scheduler and multi-worker questions were the same decision. [code]
+- **Decision:** the foundation-governed engine with the largest proven
+  scale (owner, 2026-09-21). Chosen over a lighter foundation-governed
+  engine that reuses our database but is the least proven at scale, and
+  over a single-company engine of the same design, whose scale it
+  matches. The costs accepted: its own cluster in every cell, and a
+  foundation membership still at the entry tier, so it sits behind our
+  own workflow interface (RULES.md H4a).
 - **Done when:** three replicas produce exactly one run of a scheduled
-  expiry.
-
+  expiry; the partition count is recorded with the calculation that
+  produced it; and a load run at the R-66 objective completes without
+  the database saturating.
 ### R-100 Writeback to sources is off by default
 
 - **Class:** parity
@@ -1242,6 +1329,52 @@ enabled.
   [docs]
 - **Done when:** with writeback disabled nothing reaches the source,
   and with it enabled a changed source value refuses the push by name.
+
+### R-102 Edits and source data meet under declared rules
+
+- **Class:** parity
+- **Outcome:** every editable field declares how a user's edit and
+  fresh source data are reconciled — the edit persists, the most recent
+  value wins, or a named source has priority — with no silent default.
+  Fields that exist only through edits always keep them. Edits live in
+  their own durable store, the index remains disposable, and every
+  served field records which source won. The merged result is published
+  back to the curated layer so downstream pipelines see it.
+- **Practice and precedent:** master data management sets such rules
+  per attribute, not per system, because no source is best for every
+  field, and its standard strategies include source priority, most
+  recent, most complete and a persistent manual override; each field
+  records which source won. The leading platform offers edits-win and
+  most-recent strategies per object type, keeps edits durably outside
+  its index, and publishes merged results for downstream pipelines.
+  [precedent]
+- **Learned from Elysium:** edits and source data never met, because
+  it served sources live. [code]
+- **Done when:** an editable field without a declared rule fails
+  validation; a pipeline refresh after an edit produces the value the
+  declared rule dictates; and the winning source is visible on the
+  field.
+
+
+### R-103 Every change states the version it was based on
+
+- **Class:** foundation
+- **Outcome:** every object carries a version tag; every edit must
+  send the tag it was based on. A change sent without one is refused as
+  a missing precondition, and a stale one is refused with the current
+  version, so the person can review and retry. The check and the write
+  happen atomically, and an action reads all its objects at one
+  consistent version.
+- **Practice and precedent:** the web's standard for conditional
+  requests refuses a change whose version no longer matches with
+  "precondition failed", preventing lost updates, and can require a
+  precondition on every change. The leading platform loads all objects
+  at the same versions throughout an action. [precedent]
+- **Learned from Elysium:** it compared expected values before
+  applying a write, but within one process. [code]
+- **Done when:** two people editing one object from the same version
+  produce one success and one refusal carrying the current version; an
+  edit without a version is refused.
 
 ### R-41 Queues cannot be flooded
 
