@@ -1,21 +1,32 @@
 # Behaviours
 
-What the product guarantees over HTTP. This is the specification the
-conformance suite implements: the suite runs against Elysium first,
-must pass there, and is then pointed at Urshanabi.
+The baseline: properties any governed system in this category must
+guarantee to the people and agents who use it. Urshanabi must meet
+every property here. It is not bound by how Elysium met them.
 
-Derived from Elysium at commit `f4ea94e` — 345 integration tests, of
-which 328 run without a model. Every entry below cites the test that
-proves it in Elysium, so each property is something a test has
-already made fail, not an intention.
+These were first observed and tested in Elysium, the owner's earlier
+prototype, at commit `f4ea94e` — 345 integration tests, 328 of which
+run without a model. Every entry cites the Elysium test that proves
+it, so each property is something a test has already made fail, not
+an intention. That is why Elysium is the evidence. It is not the
+design: Urshanabi chooses its own interface, shapes and mechanisms,
+and several entries below are deliberately stricter than Elysium.
+
+The conformance suite (roadmap R-07) checks each property black-box,
+through a thin driver per system that translates the property into
+that system's own interface.
 
 ## How to read an entry
 
-- **The property** is what must hold. Changing it is a breaking
+- **The property** is what must hold. Weakening it is a breaking
   change under `RULES.md` H5.
-- **Representation** is Elysium's current wire shape: status codes,
-  field names, header values. Urshanabi may change a representation,
-  but only deliberately, and the change is recorded here first.
+- **Elysium's representation** is how Elysium happened to express the
+  property: status codes, field names, header values. It is
+  illustration, not requirement. Urshanabi decides its own shapes
+  once, deliberately (roadmap R-21), and records them here.
+- **Mechanism** notes, where present, describe how Elysium worked
+  internally. Urshanabi's architecture differs, so only the property
+  carries over.
 - **Evidence** names the Elysium test file and test.
 - **Level** says how a black-box suite can check it:
   - `http` — observable through the HTTP interface alone.
@@ -32,7 +43,7 @@ and is struck through.
 ## AUTH — authentication and sessions
 
 **AUTH-01** A wrong password and an unknown username are
-indistinguishable. *Representation:* both 401, identical body.
+indistinguishable. *Elysium's representation:* both 401, identical body.
 *Evidence:* `test_api.py::test_login_wrong_password_and_nonexistent_username_are_identical`.
 *Level:* http.
 
@@ -60,15 +71,15 @@ measurement. An external review measured a 1.2 ms difference in a
 
 **AUTH-06** A successful login issues two distinct cookies: a session
 cookie script cannot read, and an anti-forgery cookie script can.
-*Representation:* 204 with an empty body; cookies `elysium_session`
+*Elysium's representation:* 204 with an empty body; cookies `elysium_session`
 and `elysium_csrf`. *Evidence:*
 `test_login_success_sets_real_session_and_csrf_cookies`. *Level:* http.
 
 **AUTH-07** State-changing requests require the anti-forgery header to
-match its cookie. *Representation:* 403. *Evidence:*
+match its cookie. *Elysium's representation:* 403. *Evidence:*
 `test_the_new_routes_require_a_csrf_token`. *Level:* http.
 
-**AUTH-08** Unauthenticated requests are refused. *Representation:*
+**AUTH-08** Unauthenticated requests are refused. *Elysium's representation:*
 reads return 401; state-changing requests return 403, because the
 anti-forgery check runs before the session check. *Evidence:*
 `test_search_objects_without_token_is_rejected`,
@@ -98,14 +109,14 @@ who does not exist is a 404. *Evidence:*
 ## HDR — transport and headers
 
 **HDR-01** Every response carries the security headers.
-*Representation:* `x-content-type-options: nosniff`,
+*Elysium's representation:* `x-content-type-options: nosniff`,
 `x-frame-options: DENY`, `referrer-policy: same-origin`,
 `content-security-policy: default-src 'self'; object-src 'none';
 base-uri 'self'; frame-ancestors 'none'`. *Evidence:*
 `test_security_headers_are_present_on_every_response`. *Level:* http.
 
 **HDR-02** Every response specific to its caller forbids caching,
-including write details. *Representation:*
+including write details. *Elysium's representation:*
 `cache-control: no-store`. *Evidence:*
 `test_me_routes_set_cache_control_no_store`,
 `test_every_per_caller_route_forbids_caching`,
@@ -113,7 +124,7 @@ including write details. *Representation:*
 
 **HDR-03** Every response — including unauthenticated ones — says
 which configuration generation answered it, and the number changes
-when configuration does. *Representation:* header
+when configuration does. *Elysium's representation:* header
 `x-elysium-generation`; Urshanabi will rename it, which is a
 deliberate representation change. *Evidence:*
 `test_every_response_says_which_generation_answered`,
@@ -122,7 +133,7 @@ deliberate representation change. *Evidence:*
 
 **HDR-04** No machine-readable description of the interface is
 served, since it would list every administrative route to an
-unauthenticated caller. *Representation:* 404. *Evidence:* the interface-description
+unauthenticated caller. *Elysium's representation:* 404. *Evidence:* the interface-description
 availability test in `test_api.py`, cited by description because its
 name contains product names. *Level:* http.
 
@@ -181,7 +192,7 @@ endpoints; that is recorded as the representation, not as a defect.
 
 **DENY-01** Search returns the same body for a type the caller cannot
 see, a type that does not exist, a MAC-denied match and no match.
-*Representation:* 200, `results: []`, `total_matches: 0`,
+*Elysium's representation:* 200, `results: []`, `total_matches: 0`,
 `next_page_token: null`, `scan_truncated: false`, plus a
 `request_id`. *Evidence:* `test_search_objects_blocks_cross_region_mac`,
 `test_search_objects_unknown_type_returns_empty_results_not_error`,
@@ -205,7 +216,7 @@ invented one return byte-identical detail bodies.
 
 **DENY-03** A filter on an unreadable field fails exactly like a
 filter on a field that does not exist, and the message names neither.
-*Representation:* 400, identical bodies. *Evidence:*
+*Elysium's representation:* 400, identical bodies. *Evidence:*
 `test_a_condition_on_an_unreadable_field_is_a_400`,
 `test_a_condition_on_an_unreadable_field_is_rejected_by_search_too`,
 `test_error_messages_do_not_leak.py`. *Level:* http.
@@ -289,7 +300,7 @@ clamped, not refused. *Evidence:*
 `test_an_oversized_page_size_is_clamped_not_rejected`. *Level:* http.
 
 **QUERY-04** Page tokens are opaque. A bare offset, a malformed token
-or an out-of-range token returns the first page. *Representation:*
+or an out-of-range token returns the first page. *Elysium's representation:*
 tokens begin `v1.`. *Evidence:* `test_a_page_token_is_opaque_not_an_offset`,
 `test_a_bare_offset_is_no_longer_accepted`,
 `test_every_malformed_token_shape_falls_back_to_the_first_page`,
@@ -306,7 +317,7 @@ ignored rather than scrambling the order. *Evidence:*
 **QUERY-06** A search that stops at its ceiling says so, and still
 returns what it found — where the ceiling counts only rows the caller
 may see, per DENY-09. A flag raised by invisible rows is a disclosure,
-not a report. *Representation:* `scan_truncated`.
+not a report. *Elysium's representation:* `scan_truncated`.
 *Evidence:* `test_search_reports_truncation.py`. *Level:* internal —
 Elysium lowers the ceiling in-process; the suite needs a fixture
 large enough to reach it.
@@ -325,12 +336,13 @@ stored key type — **including the values of link fields.**
 *Evidence:* `test_search_returns_string_ids_for_an_integer_keyed_type`,
 `test_search_and_matching_ids_agree_on_representation`,
 `test_search_and_detail_agree_on_representation`. *Level:* http.
-**Elysium does not meet the link half of this.** On its live read
-path, object detail returns link values as integers while search
-returns the same objects' ids as strings; on its mirror path both are
-strings. `test_object_detail_returns_every_visible_field_including_a_link`
-asserts the integer form. This specification takes the string form
-deliberately, and that Elysium test is the one expected divergence.
+**Elysium does not meet the link half of this.** When reading its
+sources live, its object detail returned link values as integers
+while search returned the same ids as strings; through its mirror,
+both were strings.
+`test_object_detail_returns_every_visible_field_including_a_link`
+asserts the integer form. The property takes one representation
+everywhere, and that Elysium test is an expected divergence.
 
 **QUERY-09** Counts are the caller's own and differ between callers.
 Aggregation groups and sums; with no grouping it returns one result
@@ -352,7 +364,7 @@ a 400 naming the problem. *Evidence:*
 ## ACT — actions and writes
 
 **ACT-01** The action catalogue is the caller's own, differs by role,
-and never reveals how an action changes data. *Representation:* each
+and never reveals how an action changes data. *Elysium's representation:* each
 entry has exactly `affected_object_types`, `parameters`,
 `executable`. *Evidence:*
 `test_visible_action_types_returns_the_callers_own_view`,
@@ -370,7 +382,7 @@ without it, only executable actions are listed. *Evidence:*
 
 **ACT-03** Without the catalogue grant, an unknown action, an
 unauthorized one, a missing parameter and a MAC denial are
-indistinguishable. *Representation:* 400 with "That action could not
+indistinguishable. *Elysium's representation:* 400 with "That action could not
 be proposed. Check the action name and parameters, and that you're
 authorized to perform it." *Evidence:*
 `test_propose_action_unknown_action_and_real_but_unauthorized_action_are_identical`,
@@ -380,7 +392,7 @@ authorized to perform it." *Evidence:*
 
 **ACT-04** With the catalogue grant, the two become distinguishable by
 design, since the caller can already see the catalogue.
-*Representation:* unknown is 400 naming the action; unauthorized is
+*Elysium's representation:* unknown is 400 naming the action; unauthorized is
 403 naming the user and the missing grant. *Evidence:*
 `test_propose_action_unknown_vs_unauthorized_are_no_longer_identical_for_a_discover_holder`.
 *Level:* http.
@@ -388,7 +400,7 @@ design, since the caller can already see the catalogue.
 **ACT-05** Proposing returns a pending write carrying each change and
 the values it expects to replace; nothing is written until confirmed.
 Approval makes the change visible through ordinary reads; rejection
-leaves data unchanged. *Representation:* 202; confirm returns
+leaves data unchanged. *Elysium's representation:* 202; confirm returns
 `written` or `rejected`. *Evidence:*
 `test_propose_action_succeeds_and_returns_a_real_pending_write`,
 `test_propose_action_then_confirm_actually_changes_the_database`,
@@ -396,7 +408,7 @@ leaves data unchanged. *Representation:* 202; confirm returns
 *Level:* http.
 
 **ACT-06** Confirming another user's write and confirming an unknown
-id are indistinguishable. *Representation:* 404, identical body.
+id are indistinguishable. *Elysium's representation:* 404, identical body.
 *Evidence:* `test_confirm_with_wrong_user_and_unknown_id_are_identical`.
 *Level:* http.
 
@@ -404,7 +416,7 @@ id are indistinguishable. *Representation:* 404, identical body.
 write rather than an answer; questions are rate-limited, and a refused
 question does not count against the limit; if the caller's permissions
 change while a question is processed, it is refused rather than
-answered. *Representation:* 202; 429; 409. *Evidence:*
+answered. *Elysium's representation:* 202; 429; 409. *Evidence:*
 `test_query_proposing_an_action_returns_202_with_a_reference`,
 `test_query_is_rejected_429_once_the_rate_limit_is_reached`,
 `test_a_rejected_query_is_not_itself_recorded_as_a_new_one`,
@@ -443,7 +455,7 @@ one. *Evidence:* `test_a_field_the_reviewer_cannot_read_is_REDACTED_not_omitted`
 
 **APPR-04** Reading a detail never consumes the write. A refused
 approval leaves it for someone else; a successful one consumes it.
-*Representation:* a refused approval is 409. *Evidence:*
+*Elysium's representation:* a refused approval is 409. *Evidence:*
 `test_reading_the_detail_does_not_consume_the_write`,
 `test_a_refused_approval_leaves_the_write_for_someone_else`,
 `test_approvals_inbox.py::TestFailedDecisions`. *Level:* http.
@@ -458,7 +470,7 @@ declares. *Evidence:* `test_the_oldest_proposal_is_listed_first`,
 http.
 
 **APPR-06** An expired write leaves the queue and cannot be
-confirmed. *Representation:* 404. *Evidence:*
+confirmed. *Elysium's representation:* 404. *Evidence:*
 `test_approvals_inbox.py::TestExpiry`. *Level:* oracle — needs
 control of the clock.
 
@@ -513,9 +525,10 @@ that actually back it, including renamed join keys, and omits link
 fields. *Evidence:* the `test_silos_route_*` tests. *Level:* http.
 
 **ADMIN-05** Reloading configuration needs its own grant — user
-management is not enough — and advances the generation. Starting a
-sync needs a grant, returns before the sync finishes, and is refused
-on a deployment that reads live. *Evidence:*
+management is not enough — and advances the generation. Starting an
+ingestion run needs a grant and returns before the run finishes.
+*Mechanism:* Elysium also refused it on a deployment reading its
+sources live, a mode Urshanabi may not have (roadmap R-101). *Evidence:*
 `test_reload_requires_its_own_grant_not_manage_users`,
 `test_reload_with_the_grant_advances_the_generation`,
 `test_mirror_sync_endpoint.py`. *Level:* http.
@@ -537,7 +550,9 @@ source-file health tests. *Level:* http for the first three;
 internal for the last.
 
 **ADMIN-08** Data freshness needs a login but no grant, and reports
-whether reads are live or from the mirror, with the last sync time.
+how current the served data is: when each source was last ingested
+and when the curated data was last published. *Mechanism:* Elysium
+reported whether it read live or from its mirror.
 *Evidence:* the `test_data_freshness_*` tests. *Level:* http.
 
 ---
@@ -567,7 +582,7 @@ keeps this property by running against two unrelated fixtures.
 
 ---
 
-## What Urshanabi owes beyond Elysium
+## Where Urshanabi must exceed Elysium
 
 From the external review of Elysium, which found these missing:
 
@@ -583,7 +598,8 @@ when they expire.
 **EXTRA-03** Session tokens are stored only as hashes. *Level:*
 internal — not observable over HTTP.
 
-**EXTRA-04** QUERY-08's link half: ids are strings on every read path.
+**EXTRA-04** QUERY-08's link half: one id representation everywhere,
+including link values.
 
 **EXTRA-05** DENY-09 in full: no truncation flag, count or total
 derived from rows the caller cannot see.
@@ -592,7 +608,9 @@ derived from rows the caller cannot see.
 
 ## Before the suite exists
 
-The suite needs a fixture deployment. Elysium's integration fixture
-is written in its configuration format; whether Urshanabi reads the
-same format, or the suite translates it, is undecided. Everything
-above holds regardless of that choice.
+The suite needs one fixture that both systems can load: the same
+data, ontology and policy, described in a neutral form that each
+system's driver translates into its own configuration. Elysium's
+integration fixture is the starting point, since every test cited
+above ran against it. Everything above holds regardless of how the
+drivers load it.
