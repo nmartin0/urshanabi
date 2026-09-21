@@ -28,6 +28,8 @@ Nothing in a stage starts until what it depends on is done.
   - *new*: neither the leader nor Elysium has it, as far as public
     documentation shows.
   - *open decision*: undecided, waiting for the owner.
+- **Status** — *planned*; *in progress*, saying what is done and what
+  remains; or *done*, citing its evidence. Paths cited must exist.
 - **Outcome** — what Urshanabi does. Always first.
 - **Practice and precedent** — the industry practice and precedent
   behind the outcome, described without names (RULES.md H1).
@@ -61,6 +63,9 @@ any commercial system needs, whatever its category.
 ### R-01 Continuous integration from the first commit
 
 - **Class:** foundation
+- **Status:** done — every push runs `script/cibuild`, and every check
+  is broken on purpose by a self-test (`script/cibuild`,
+  `script/check-scripts`).
 - **Outcome:** every push runs every lint, type, dead-code, boundary,
   lockfile and naming check, and every test suite, on a clean checkout.
 - **Learned from Elysium:** no CI of any kind. Its lint script called
@@ -71,6 +76,7 @@ any commercial system needs, whatever its category.
 ### R-02 Tests declare their prerequisites
 
 - **Class:** foundation
+- **Status:** planned
 - **Outcome:** a test needing data declares a fixture that builds it,
   or skips with the exact command that would. The fast tier needs
   nothing outside the repository.
@@ -83,6 +89,7 @@ any commercial system needs, whatever its category.
 ### R-03 Browser tests in CI, not beside it
 
 - **Class:** foundation
+- **Status:** planned
 - **Outcome:** real-browser tests run in CI against the built
   interface for anything layout, hit-testing or cascade dependent.
 - **Learned from Elysium:** the simulated document that unit tests run
@@ -95,6 +102,7 @@ any commercial system needs, whatever its category.
 ### R-04 One end-to-end test per wire
 
 - **Class:** foundation
+- **Status:** planned
 - **Outcome:** every handler a test mocks has one test driving the
   real one through its real entry point.
 - **Learned from Elysium:** three shipped commits crashed on a user's
@@ -106,6 +114,7 @@ any commercial system needs, whatever its category.
 ### R-05 Versioned migrations before any store persists
 
 - **Class:** foundation
+- **Status:** planned
 - **Outcome:** every store carries a schema version and ordered
   migrations from its first table.
 - **Learned from Elysium:** stores create their tables if absent. One
@@ -117,6 +126,9 @@ any commercial system needs, whatever its category.
 ### R-06 Service contracts with breaking-change detection
 
 - **Class:** foundation
+- **Status:** in progress — breaking changes fail CI
+  (`contracts/script/test`); remaining: a test that fails when an unsafe
+  error argument is logged, with the first service's logger.
 - **Outcome:** internal calls defined in a schema-first binary
   interface language, with breaking-change checks in CI; the public HTTP
   description generated from it; the changelog and audit streams
@@ -159,6 +171,7 @@ any commercial system needs, whatever its category.
 ### R-07 A conformance suite of properties, one driver per system
 
 - **Class:** foundation
+- **Status:** planned
 - **Outcome:** `conformance/BEHAVIOURS.md` implemented as black-box
   property tests. Each system is reached through a thin driver that
   translates a property into that system's own interface. Elysium is the
@@ -171,6 +184,7 @@ any commercial system needs, whatever its category.
 ### R-08 A request id on every route from the first route
 
 - **Class:** foundation
+- **Status:** planned
 - **Outcome:** every request carries an id from the gateway through
   every service, into every audit record and log line, with traces,
   metrics and logs emitted to a vendor-neutral telemetry standard.
@@ -186,6 +200,7 @@ any commercial system needs, whatever its category.
 ### R-09 Integrity checks that cannot be stripped
 
 - **Class:** foundation
+- **Status:** planned
 - **Outcome:** integrity checks are ordinary code paths that return or
   raise explicitly, in every language role.
 - **Learned from Elysium:** data-integrity checks were language
@@ -197,6 +212,9 @@ any commercial system needs, whatever its category.
 ### R-10 Reproducible installs, exactly
 
 - **Class:** foundation
+- **Status:** in progress — tools are pinned and checksum-verified
+  (`script/tools.lock`); remaining: hashed lockfiles for each language,
+  and a check that fails when a manifest changes without its lockfile.
 - **Outcome:** every language role installs from a hashed lockfile; CI
   fails when a lockfile drifts from its manifest.
 - **Learned from Elysium:** dependencies were bounded rather than
@@ -208,6 +226,7 @@ any commercial system needs, whatever its category.
 ### R-11 Generated state is never tracked
 
 - **Class:** foundation
+- **Status:** planned
 - **Outcome:** ignore rules cover every generated path before the
   first generator exists.
 - **Learned from Elysium:** generated databases and lake files were
@@ -219,6 +238,7 @@ any commercial system needs, whatever its category.
 ### R-12 A development environment that survives a reboot
 
 - **Class:** foundation
+- **Status:** planned
 - **Outcome:** one command builds the whole local stack, with data
   under the user's own directory.
 - **Learned from Elysium:** development data lived in a directory
@@ -229,6 +249,7 @@ any commercial system needs, whatever its category.
 ### R-13 Fixtures with volume
 
 - **Class:** foundation
+- **Status:** planned
 - **Outcome:** a small fixture for speed and a volume fixture for
   paging, truncation and memory ceilings, both in CI.
 - **Learned from Elysium:** fixtures held 4 customers and 7
@@ -240,6 +261,7 @@ any commercial system needs, whatever its category.
 ### R-14 Tests prove no code depends on the host's timezone
 
 - **Class:** foundation
+- **Status:** planned
 - **Outcome:** date-sensitive tests run three times: under UTC, under
   a zone behind UTC, and under a zone observing daylight saving. The
   zone is set by the test scripts themselves, so a local run and CI run
@@ -260,6 +282,9 @@ any commercial system needs, whatever its category.
 ### R-128 UTC is the one timezone
 
 - **Class:** foundation
+- **Status:** in progress — the rule is recorded and contracts use the
+  UTC timestamp type (`contracts/urshanabi/build/v1/build.proto`);
+  remaining: the three-zone tests and civil-time scheduling.
 - **Outcome:** every instant is stored, processed, compared and
   transmitted in UTC: in contracts as the standard UTC timestamp type,
   in text as an RFC 3339 timestamp ending in Z. Only the edge converts
@@ -286,6 +311,9 @@ any commercial system needs, whatever its category.
 ### R-15 Documentation that cannot silently drift
 
 - **Class:** foundation
+- **Status:** in progress — every cited item, property and rule is
+  checked (`script/check-docs`); remaining: documented limitations
+  linked to the tests that cite them.
 - **Outcome:** one roadmap (this file). Design documents hold
   reasoning, not work. A known limitation names what would close it, or
   cites a test asserting it still holds.
@@ -300,6 +328,8 @@ any commercial system needs, whatever its category.
 ### R-16 The naming rule is enforced
 
 - **Class:** foundation
+- **Status:** done — the name check runs on every push
+  (`script/check-names`).
 - **Outcome:** CI scans everything written for the repository for
   company, product and language names.
 - **Learned from Elysium:** its documents and comments name a
@@ -309,6 +339,8 @@ any commercial system needs, whatever its category.
 ### R-17 Repository visibility and licence
 
 - **Class:** foundation
+- **Status:** in progress — public for the time being; remaining: a
+  licence, or a return to private.
 - **Outcome:** private from the first commit, or licensed
   deliberately. An owner decision.
 - **Learned from Elysium:** its licence describes unpublished
@@ -327,6 +359,7 @@ any commercial system needs, whatever its category.
 ### R-18 No shared in-process state
 
 - **Class:** foundation
+- **Status:** planned
 - **Outcome:** every service is stateless; state lives in the stores
   built for it.
 - **Learned from Elysium:** per-object locks, the pending-write
@@ -340,6 +373,7 @@ any commercial system needs, whatever its category.
 ### R-33 Nothing built that nothing uses
 
 - **Class:** foundation
+- **Status:** planned
 - **Outcome:** a component ships with its caller, or not at all.
 - **Learned from Elysium:** a memory guard was built and tested but
   never wired into the agent. [code]
@@ -349,6 +383,9 @@ any commercial system needs, whatever its category.
 ### R-66 Stated scale objectives, each with a load test
 
 - **Class:** foundation
+- **Status:** in progress — the objectives are written and checked
+  (`docs/scale.md`, `script/check-scale`); remaining: a load test for
+  each objective, run on a schedule.
 - **Outcome:** written objectives for objects per type, query latency
   at the 95th percentile, pipeline freshness, rows ingested per hour and
   cell throughput, derived from the workloads of the customers Urshanabi
@@ -380,6 +417,7 @@ any commercial system needs, whatever its category.
 ### R-78 Consumer-driven contract tests
 
 - **Class:** foundation
+- **Status:** planned
 - **Outcome:** each consumer publishes what it relies on; each
   producer's CI verifies against every consumer's expectations.
 - **Practice and precedent:** contract testing, where producers and
@@ -393,6 +431,9 @@ any commercial system needs, whatever its category.
 ### R-79 One writer per store
 
 - **Class:** foundation
+- **Status:** in progress — the map is written and checked
+  (`docs/writers.md`, `script/check-writers`); remaining: enforcement by
+  each store once it exists.
 - **Outcome:** a written map, `docs/writers.md`, naming the single
   writer of every store, enforced by credentials: only the owner holds
   write access, and the store refuses everyone else. One writer is one
@@ -415,6 +456,7 @@ any commercial system needs, whatever its category.
 ### R-80 Decompose on evidence
 
 - **Class:** foundation
+- **Status:** planned
 - **Outcome:** every service contract exists from Phase 0, but the
   first release ships as few processes as the security boundaries allow,
   and each process exists because of the secrets it alone holds:
@@ -436,6 +478,7 @@ any commercial system needs, whatever its category.
 ### R-85 Every dependency passes the selection record
 
 - **Class:** foundation
+- **Status:** planned
 - **Outcome:** a dependency register records licence, governance, exit
   interface, disconnection and supply chain for every dependency. CI
   checks licences against an allowlist.
@@ -451,6 +494,9 @@ any commercial system needs, whatever its category.
 ### R-86 The build pipeline is hardened against supply-chain attack
 
 - **Class:** foundation
+- **Status:** done — the CI definition is pinned and scanned at the
+  strictest level, and tools are pinned and checksum-verified
+  (`script/check-workflows`, `script/bootstrap`).
 - **Outcome:** every CI action and tool is pinned by digest; workflows
   triggered by untrusted input get no secrets; publishing uses
   short-lived federated credentials, never stored tokens; release
@@ -469,6 +515,7 @@ any commercial system needs, whatever its category.
 ### R-94 Nothing leaves a cell unless enabled
 
 - **Class:** foundation
+- **Status:** planned
 - **Outcome:** no component sends anything outside a cell unless an
   administrator enables it; dependency telemetry is switched off in
   every shipped configuration.
@@ -482,6 +529,7 @@ any commercial system needs, whatever its category.
 ### R-95 The interface is our own design system
 
 - **Class:** improvement
+- **Status:** planned
 - **Outcome:** Urshanabi's own design system: layered design tokens
   (primitive, semantic, component) and its own components, built on
   unstyled, accessible behaviour primitives installed as ordinary
@@ -504,6 +552,7 @@ any commercial system needs, whatever its category.
 ### R-129 Every word on screen is translatable
 
 - **Class:** parity
+- **Status:** planned
 - **Outcome:** every string the interface shows lives in a message
   catalogue, written in the standard message syntax with plural and
   gender rules, never in code. English, Spanish and Portuguese ship
@@ -533,6 +582,9 @@ any commercial system needs, whatever its category.
 ### R-121 Every production build is publicly verifiable
 
 - **Class:** foundation
+- **Status:** in progress — the build-identity contract exists
+  (`contracts/urshanabi/build/v1/build.proto`); remaining: publishing
+  fingerprints and checking attestations against them.
 - **Outcome:** the fingerprint of every production build is published
   to the tamper-evident log (R-88), and every component's attestation is
   checked against it, so a customer can verify exactly which code is
@@ -549,6 +601,8 @@ any commercial system needs, whatever its category.
 ### R-125 A compliance control matrix from the first commit
 
 - **Class:** foundation
+- **Status:** done — every implemented control cites a passing check
+  and self-test (`docs/compliance.md`, `script/check-compliance`).
 - **Outcome:** a maintained matrix maps every control Urshanabi
   implements to the baselines its buyers use: the federal control
   catalogue (SP 800-53 Rev. 5), the zero-trust architecture guidance (SP
@@ -572,6 +626,10 @@ any commercial system needs, whatever its category.
 ### R-127 The engineering standards are enforced from the first commit
 
 - **Class:** foundation
+- **Status:** in progress — repository gates, boundaries and the
+  scripts' own tests run in CI (`script/check-scripts`); remaining: each
+  language's six gates and the dependency-rung check, with the first
+  components.
 - **Outcome:** `RULES.md` part three is enforced in CI from the first
   commit: every dependency records its rung on the standard-library
   ladder (E1); every component is its own project, with dependencies
@@ -611,6 +669,7 @@ and lineage.
 ### R-92 Secrets are references, never values
 
 - **Class:** foundation
+- **Status:** planned
 - **Outcome:** every credential in configuration is a reference to the
   secret store, never a value; a missing reference refuses to load and
   names the field; secrets never reach logs, errors, bundles or the
@@ -624,6 +683,7 @@ and lineage.
 ### R-91 Encryption in transit and at rest, keyed per tenant
 
 - **Class:** foundation
+- **Status:** planned
 - **Outcome:** every connection encrypted; every store encrypted at
   rest with keys held in a key service; per-tenant keys once tenancy is
   decided (R-52), so one tenant's data can be destroyed by destroying
@@ -636,6 +696,7 @@ and lineage.
 ### R-96 Pipelines run under an asset-aware data orchestrator
 
 - **Class:** parity
+- **Status:** planned
 - **Outcome:** pipelines are declared in Urshanabi's own format, as
   data assets with their dependencies, freshness, checks and lineage,
   and compiled to a foundation-governed data orchestrator that keeps
@@ -665,6 +726,7 @@ and lineage.
 ### R-98 Each layer has an owner and a quality contract
 
 - **Class:** parity
+- **Status:** planned
 - **Outcome:** the raw, cleaned and curated layers each publish what
   they guarantee — schema, freshness, completeness — and name who owns
   it. The ontology binds only to curated data whose contract it accepts.
@@ -680,6 +742,7 @@ and lineage.
 ### R-62 Read credentials are checked, not assumed
 
 - **Class:** improvement
+- **Status:** planned
 - **Outcome:** at startup, each read connection tests whether its
   credential can write, and refuses or warns by policy.
 - **Learned from Elysium:** documented that sources should use
@@ -689,6 +752,7 @@ and lineage.
 ### R-53 Ingestion within a fixed memory ceiling
 
 - **Class:** parity
+- **Status:** planned
 - **Outcome:** ingestion streams in bounded batches, and refuses a
   table it cannot hold rather than being killed.
 - **Learned from Elysium:** a sync held the whole table four times
@@ -701,6 +765,7 @@ and lineage.
 ### R-55 Bounded raw storage from the first sync
 
 - **Class:** parity
+- **Status:** planned
 - **Outcome:** the raw layer keeps two snapshots from day one; history
   lives in a changelog that grows only with real changes.
 - **Learned from Elysium:** copy-on-write grew a 20,000-row table with
@@ -710,6 +775,7 @@ and lineage.
 ### R-93 A source that changes shape is refused, not absorbed
 
 - **Class:** parity
+- **Status:** planned
 - **Outcome:** a column whose values no longer match its declared type
   produces a drift report naming the column, the type and an example,
   and ingestion of that source is refused rather than silently coerced;
@@ -724,6 +790,7 @@ and lineage.
 ### R-104 One writer per table, three layers deep
 
 - **Class:** foundation
+- **Status:** planned
 - **Outcome:** each table has exactly one owner (R-79): ingestion for
   every raw table, and one owning pipeline for each cleaned and curated
   table. The orchestrator runs at most one run of a pipeline at a time,
@@ -748,6 +815,7 @@ and lineage.
 ### R-110 Non-append table writes use the reference implementation
 
 - **Class:** foundation
+- **Status:** planned
 - **Outcome:** raw ingestion appends through the systems-language
   table library, and all reads use it; every overwrite, delete,
   row-level update, merge and compaction — including retention deletions
@@ -771,6 +839,7 @@ and lineage.
 ### R-111 Tables use the format's third version
 
 - **Class:** foundation
+- **Status:** planned
 - **Outcome:** every table is created at the table format's third
   version: row lineage gives each row a permanent id and the sequence
   number of the change that last touched it, which becomes the index
@@ -788,6 +857,7 @@ and lineage.
 ### R-107 Freshness is declared per object type
 
 - **Class:** improvement
+- **Status:** planned
 - **Outcome:** every object type declares its freshness: real-time
   (changes streamed from the source and processed continuously, target
   in seconds), near-real-time (small frequent batches, target in
@@ -808,6 +878,7 @@ and lineage.
 ### R-97 Transformations are versioned, tested code
 
 - **Class:** parity
+- **Status:** planned
 - **Outcome:** every transformation from raw to curated is code in
   version control, with tests and data checks, reviewed like any change
   and previewable on a branch before it publishes.
@@ -824,6 +895,7 @@ and lineage.
 ### R-89 Data is published only after it passes its checks
 
 - **Class:** parity
+- **Status:** planned
 - **Outcome:** each sync writes to a branch, runs its declared checks
   there, and publishes only on success.
 - **Practice and precedent:** the established platform versions data
@@ -839,6 +911,7 @@ and lineage.
 ### R-54 A pointer is committed only after what it names is durable
 
 - **Class:** parity
+- **Status:** planned
 - **Outcome:** every pointer swap follows a durability point.
 - **Learned from Elysium:** a full disk left the catalog pointing at
   metadata that was never written; re-syncing could not repair it.
@@ -849,6 +922,7 @@ and lineage.
 ### R-56 History is custodial, so it is durable
 
 - **Class:** parity
+- **Status:** planned
 - **Outcome:** the changelog ships only with durable object storage
   and verified backups.
 - **Learned from Elysium:** its roadmap recognised that a changelog
@@ -860,6 +934,7 @@ and lineage.
 ### R-90 Identity resolution in the curated layer
 
 - **Class:** parity
+- **Status:** planned
 - **Outcome:** a curation stage, fed by the change log, resolves
   records from different sources that describe the same subject.
   Declared joins are primary; inference is off by default and every
@@ -885,6 +960,7 @@ and lineage.
 ### R-76 Classification follows lineage
 
 - **Class:** parity
+- **Status:** planned
 - **Outcome:** classifications follow the data from each source
   through the raw, cleaned and curated layers into the ontology, and
   every stop in propagation requires review.
@@ -901,6 +977,7 @@ and lineage.
 ### R-75 Distributed compute, batch and streaming
 
 - **Class:** parity
+- **Status:** planned
 - **Outcome:** single-node by default. Beyond one node, the
   foundation-governed distributed batch engine runs with a native
   accelerator built on the same query engine as the read plane, and jobs
@@ -921,6 +998,7 @@ and lineage.
 ### R-58 Failures are pushed, not discovered
 
 - **Class:** parity
+- **Status:** planned
 - **Outcome:** a refused sync, a stale table or a failed integrity
   check notifies its administrators when it happens.
 - **Learned from Elysium:** a sync refused overnight was discovered
@@ -932,6 +1010,7 @@ and lineage.
 ### R-40 Retention runs on a clock
 
 - **Class:** parity
+- **Status:** planned
 - **Outcome:** expiry and retention are enforced on schedule, because
   a commercial product has deletion obligations.
 - **Learned from Elysium:** expired artifacts are deleted only when
@@ -953,6 +1032,10 @@ then audit and operations.
 ### R-51 Configuration is authored as code
 
 - **Class:** parity
+- **Status:** in progress — the format is specified
+  (`docs/ontology-format.md`); remaining: the shared library, bundle
+  signing, the allow-listed manifest, and the check that only the
+  library parses definitions.
 - **Outcome:** ontology and policy authored in version control,
   compiled and signed by the control plane, never edited around it, and
   published beside the data as an allow-listed manifest. The meaning of
@@ -975,6 +1058,7 @@ then audit and operations.
 ### R-130 The ontology speaks every supported language
 
 - **Class:** improvement
+- **Status:** planned
 - **Outcome:** every object type, property, link type and action
   carries display names and descriptions per language in the ontology
   itself, authored with it (R-51) and checked for completeness. Every
@@ -992,6 +1076,7 @@ then audit and operations.
 ### R-81 Services authenticate each other
 
 - **Class:** foundation
+- **Status:** planned
 - **Outcome:** every internal call is mutually authenticated, with
   short-lived, automatically rotated workload identities.
 - **Practice and precedent:** the federal guidance for microservices
@@ -1005,6 +1090,7 @@ then audit and operations.
 ### R-82 Each service names who may call it
 
 - **Class:** foundation
+- **Status:** planned
 - **Outcome:** each service declares its permitted callers; all other
   callers are denied by default.
 - **Practice and precedent:** the same guidance applies
@@ -1017,6 +1103,7 @@ then audit and operations.
 ### R-84 A revoked user stops everywhere, quickly
 
 - **Class:** foundation
+- **Status:** planned
 - **Outcome:** internal user tokens live for a bounded, short time;
   disabling a user or revoking a grant publishes a revocation that every
   enforcing service honours within a stated bound; high-risk actions
@@ -1035,6 +1122,7 @@ then audit and operations.
 ### R-44 Login input is bounded before anything persists
 
 - **Class:** foundation
+- **Status:** planned
 - **Outcome:** both fields bounded at the edge.
 - **Learned from Elysium:** usernames and passwords had no length
   limit. Ten unauthenticated requests grew the credentials database from
@@ -1046,6 +1134,7 @@ then audit and operations.
 ### R-45 Expiring state expires by construction
 
 - **Class:** foundation
+- **Status:** planned
 - **Outcome:** both live in a store whose keys expire.
 - **Learned from Elysium:** failed-login records and expired sessions
   were never deleted. [measured]
@@ -1055,6 +1144,7 @@ then audit and operations.
 ### R-46 Session tokens hashed at rest
 
 - **Class:** foundation
+- **Status:** planned
 - **Outcome:** only a hash of each token is stored.
 - **Learned from Elysium:** stored in plain text, so reading the
   credentials store equals hijacking every live session. [measured]
@@ -1064,6 +1154,7 @@ then audit and operations.
 ### R-47 Idle timeout as well as absolute expiry
 
 - **Class:** foundation
+- **Status:** planned
 - **Outcome:** both.
 - **Learned from Elysium:** a 24-hour absolute cap, no idle timeout;
   acknowledged. [code]
@@ -1073,6 +1164,7 @@ then audit and operations.
 ### R-48 Constant-time token comparison
 
 - **Class:** foundation
+- **Status:** planned
 - **Outcome:** constant-time comparison for every secret.
 - **Learned from Elysium:** the anti-forgery check compares with
   ordinary equality. Practically unexploitable, and free to fix. [code]
@@ -1083,6 +1175,7 @@ then audit and operations.
 ### R-67 Validation errors never reflect request bodies
 
 - **Class:** foundation
+- **Status:** planned
 - **Outcome:** one error shape for every route; no submitted value is
   ever echoed.
 - **Learned from Elysium:** an unauthenticated login missing its
@@ -1096,6 +1189,7 @@ then audit and operations.
 ### R-21 One uniform-denial convention
 
 - **Class:** foundation
+- **Status:** planned
 - **Outcome:** one convention, decided once and documented in
   `BEHAVIOURS.md` before the first route exists.
 - **Learned from Elysium:** denial is uniform within each endpoint but
@@ -1108,6 +1202,7 @@ then audit and operations.
 ### R-22 Failure kinds in our own vocabulary
 
 - **Class:** foundation
+- **Status:** planned
 - **Outcome:** failures map to a closed set of our own kinds:
   unreachable, refused, empty, misconfigured.
 - **Learned from Elysium:** source status reports the runtime's
@@ -1119,6 +1214,7 @@ then audit and operations.
 ### R-70 The ontology is served from an index over curated data
 
 - **Class:** improvement
+- **Status:** planned
 - **Outcome:** an indexer, fed incrementally from the curated layer's
   change log, maintains what the ontology serves; a separate query
   service answers from it, so each scales on its own. Early binding by
@@ -1171,6 +1267,7 @@ then audit and operations.
 ### R-69 Execution tiers with published limits
 
 - **Class:** parity
+- **Status:** planned
 - **Outcome:** the tier is chosen by estimated size, every limit is
   published, and work past the last limit is refused by name. The first
   release ships two tiers; the distributed tier depends on R-75.
@@ -1190,6 +1287,7 @@ then audit and operations.
 ### R-68 No signal derived from hidden rows
 
 - **Class:** new
+- **Status:** planned
 - **Outcome:** the security condition runs first, with a reviewed list
   of operators allowed ahead of it; counts, totals and truncation come
   only from rows that passed it.
@@ -1210,6 +1308,7 @@ then audit and operations.
 ### R-71 Aggregate inference is controlled
 
 - **Class:** new
+- **Status:** planned
 - **Outcome:** aggregates below a configurable group size are
   suppressed by default; differential privacy is opt-in for designated
   sensitive types, with a per-user budget.
@@ -1229,6 +1328,7 @@ then audit and operations.
 ### R-20 One id representation everywhere
 
 - **Class:** foundation
+- **Status:** planned
 - **Outcome:** every object id, including every link value, has one
   representation in every response.
 - **Learned from Elysium:** on the live path, detail returned link
@@ -1239,6 +1339,7 @@ then audit and operations.
 ### R-105 The index never goes backwards
 
 - **Class:** foundation
+- **Status:** planned
 - **Outcome:** every write to the search index carries the source
   change's sequence number as its version, and the index rejects any
   write older than what it holds. Rejected writes are counted, and a
@@ -1258,6 +1359,7 @@ then audit and operations.
 ### R-106 Every state-changing request can be safely retried
 
 - **Class:** foundation
+- **Status:** planned
 - **Outcome:** every state-changing endpoint accepts an idempotency
   key. The key, a fingerprint of the request and the response are stored
   durably, scoped to the caller, for a day. A retry returns the stored
@@ -1277,6 +1379,7 @@ then audit and operations.
 ### R-108 Staleness is always visible
 
 - **Class:** improvement
+- **Status:** planned
 - **Outcome:** every record and result shows how current it is, and
   anything past its declared freshness target (R-107) is marked as stale
   rather than presented as current.
@@ -1291,6 +1394,7 @@ then audit and operations.
 ### R-109 Screens update live
 
 - **Class:** improvement
+- **Status:** planned
 - **Outcome:** when a record changes, every open screen showing it
   updates without a reload; a person's own edits appear everywhere
   immediately (R-102), and a save confirms only once the change is
@@ -1308,6 +1412,7 @@ then audit and operations.
 ### R-114 Large results travel as columnar streams
 
 - **Class:** foundation
+- **Status:** planned
 - **Outcome:** bulk results move between services and to analytical
   clients as columnar streams over a standard columnar SQL wire
   protocol, including parallel streams for distributed reads;
@@ -1325,6 +1430,7 @@ then audit and operations.
 ### R-116 Query plans use the standard cross-engine representation
 
 - **Class:** foundation
+- **Status:** planned
 - **Outcome:** the query service can express its plans in the standard
   cross-engine query plan representation, so an accelerated engine —
   including GPU-native engines now emerging — can execute them without
@@ -1342,6 +1448,7 @@ then audit and operations.
 ### R-131 Search works across languages
 
 - **Class:** foundation
+- **Status:** planned
 - **Outcome:** every text field carries a language tag, set from
   source metadata or detected, and is processed with that language's
   rules for keyword search. Semantic search uses multilingual
@@ -1363,6 +1470,7 @@ then audit and operations.
 ### R-112 Key exchange is post-quantum hybrid
 
 - **Class:** foundation
+- **Status:** planned
 - **Outcome:** every TLS connection negotiates the hybrid post-quantum
   key exchange standardised as RFC 10024, internally and at the edge; a
   cryptographic inventory lists every key and algorithm in use;
@@ -1387,6 +1495,7 @@ then audit and operations.
 ### R-119 No single machine can reach everyone's data
 
 - **Class:** foundation
+- **Status:** planned
 - **Outcome:** no service instance holds standing credentials for all
   data. Credentials are short-lived and scoped to one tenant and one
   request, and requests are distributed so that nobody can steer a
@@ -1405,6 +1514,7 @@ then audit and operations.
 ### R-120 Stateless work and no privileged runtime access
 
 - **Class:** foundation
+- **Status:** planned
 - **Outcome:** services keep no customer plaintext once a request
   completes, and production workloads have no shell, debugger or
   administrative path; operators observe them only through reviewed,
@@ -1420,6 +1530,7 @@ then audit and operations.
 ### R-126 The mesh fits the cell
 
 - **Class:** foundation
+- **Status:** planned
 - **Outcome:** standard cells use a sidecar-less service mesh for
   mutual TLS with the hybrid post-quantum exchange and identity-based
   policy. Confidential cells terminate encryption inside each protected
@@ -1443,6 +1554,7 @@ then audit and operations.
 ### R-25 Say how authoritative a count is
 
 - **Class:** improvement
+- **Status:** planned
 - **Outcome:** responses say whether a count is pinned to a snapshot.
 - **Learned from Elysium:** the interface shows "N of M matches"
   unconditionally, which overstates a live deployment and understates a
@@ -1453,6 +1565,7 @@ then audit and operations.
 ### R-35 Cross-source questions are answered by the curated layer
 
 - **Class:** improvement
+- **Status:** planned
 - **Outcome:** sources are joined in the pipelines, so every ontology
   type is served from curated data and no serving query spans stores;
   the limit disappears by design. Anything past a published serving
@@ -1466,6 +1579,7 @@ then audit and operations.
 ### R-23 Audit that is durable and affordable
 
 - **Class:** parity
+- **Status:** planned
 - **Outcome:** one record per bulk read, every denial its own record,
   durable before the response leaves, write-once retention.
 - **Learned from Elysium:** one record per field access; at 200,000
@@ -1477,6 +1591,7 @@ then audit and operations.
 ### R-88 The audit trail is tamper-evident
 
 - **Class:** new
+- **Status:** planned
 - **Outcome:** every audit record is added to such a tree; signed
   checkpoints are published to a witness the customer controls.
 - **Practice and precedent:** transparency logs place each entry in an
@@ -1493,6 +1608,7 @@ then audit and operations.
 ### R-24 Administrators can trace any request
 
 - **Class:** parity
+- **Status:** planned
 - **Outcome:** caller-scoped traces plus an audited, admin-only trace
   view.
 - **Learned from Elysium:** only a caller's own trace is readable;
@@ -1503,6 +1619,7 @@ then audit and operations.
 ### R-36 Complete security headers, one owner each
 
 - **Class:** foundation
+- **Status:** planned
 - **Outcome:** the full header set, each header set in exactly one
   documented place.
 - **Learned from Elysium:** no permissions-policy header, and the
@@ -1513,6 +1630,7 @@ then audit and operations.
 ### R-83 Deadlines, circuit breakers and bulkheads
 
 - **Class:** foundation
+- **Status:** planned
 - **Outcome:** a deadline set at the gateway travels with every call
   and shrinks at each hop; calls to a failing dependency trip a breaker;
   each dependency has its own bounded resources.
@@ -1528,6 +1646,9 @@ then audit and operations.
 ### R-74 The ontology is portable
 
 - **Class:** new
+- **Status:** in progress — the format is specified openly
+  (`docs/ontology-format.md`); remaining: the export and its round-trip
+  test.
 - **Outcome:** its own format is documented openly, and exports to the
   open specification.
 - **Practice and precedent:** lock-in is the most consistent criticism
@@ -1554,6 +1675,7 @@ then audit and operations.
 ### R-101 Live access only to already-curated external data
 
 - **Class:** parity
+- **Status:** planned
 - **Outcome:** the ontology is served from curated data. An external
   table may be served live, without copying, only if it is already
   curated in a governed store and meets the curated-layer contract
@@ -1586,6 +1708,7 @@ protocol, and through Urshanabi's own agent.
 ### R-99 Agents reach the ontology through the open agent-tool protocol
 
 - **Class:** parity
+- **Status:** planned
 - **Outcome:** the ontology is offered to any agent through the open,
   foundation-governed protocol agents use to reach tools and data, under
   the same policy as every other caller. Urshanabi's own agent is one
@@ -1601,6 +1724,7 @@ protocol, and through Urshanabi's own agent.
 ### R-132 Agents work in the person's language
 
 - **Class:** foundation
+- **Status:** planned
 - **Outcome:** the agent reads questions and answers in the person's
   language, using the ontology's translated names (R-130); every agent
   evaluation runs in each supported language, and a language whose rates
@@ -1616,6 +1740,7 @@ protocol, and through Urshanabi's own agent.
 ### R-115 Agents work with other organisations' agents
 
 - **Class:** parity
+- **Status:** planned
 - **Outcome:** Urshanabi's agent can be reached by, and can delegate
   to, other agents through the foundation-governed agent-to-agent
   protocol, always as the user and within the agent envelope (the
@@ -1635,6 +1760,7 @@ protocol, and through Urshanabi's own agent.
 ### R-26 The agent's context is budgeted
 
 - **Class:** improvement
+- **Status:** planned
 - **Outcome:** a step returns a count and a sample; context is
   budgeted per hop and never compacted.
 - **Learned from Elysium:** the loop overflowed its own 4,096-token
@@ -1646,6 +1772,7 @@ protocol, and through Urshanabi's own agent.
 ### R-27 Model calls have deadlines and accounting
 
 - **Class:** foundation
+- **Status:** planned
 - **Outcome:** every model call has a deadline and returns a result
   carrying token counts.
 - **Learned from Elysium:** the model interface accepts no timeout and
@@ -1657,6 +1784,7 @@ protocol, and through Urshanabi's own agent.
 ### R-28 An evaluation harness with a regression gate
 
 - **Class:** foundation
+- **Status:** planned
 - **Outcome:** each case runs many times; rates are compared against a
   stored baseline with a stated tolerance, nightly.
 - **Learned from Elysium:** model-dependent tests were pass or fail on
@@ -1667,6 +1795,7 @@ protocol, and through Urshanabi's own agent.
 ### R-29 Retrieved data is treated as able to steer
 
 - **Class:** new
+- **Status:** planned
 - **Outcome:** prompt content derived from data is marked, recorded
   and evaluated; a planner that never sees raw data is assessed.
 - **Learned from Elysium:** ontology data enters the same prompt as
@@ -1678,6 +1807,7 @@ protocol, and through Urshanabi's own agent.
 ### R-30 Prompt caches never cross users
 
 - **Class:** new
+- **Status:** planned
 - **Outcome:** per-user content at the head of every prompt, and no
   prefix-cache reuse across users on shared inference.
 - **Learned from Elysium:** a shared 103-character prompt prefix let
@@ -1690,6 +1820,7 @@ protocol, and through Urshanabi's own agent.
 ### R-31 Production inference, not a desktop runner
 
 - **Class:** parity
+- **Status:** planned
 - **Outcome:** hosted models or a batching inference server, chosen
   per tenant. A distributed inference layer that routes requests by
   cached prompt prefixes may be added for throughput only with caches
@@ -1702,6 +1833,7 @@ protocol, and through Urshanabi's own agent.
 ### R-32 Output modes are chosen by measurement
 
 - **Class:** foundation
+- **Status:** planned
 - **Outcome:** any change of output mode is decided by the harness.
 - **Learned from Elysium:** its research found hard schema-constrained
   output raised validity but lowered accuracy. [docs]
@@ -1710,6 +1842,7 @@ protocol, and through Urshanabi's own agent.
 ### R-34 Starter questions reveal nothing
 
 - **Class:** foundation
+- **Status:** planned
 - **Outcome:** starter questions carry no ids.
 - **Learned from Elysium:** example questions name specific objects,
   which discloses their existence to users who cannot see them;
@@ -1719,6 +1852,7 @@ protocol, and through Urshanabi's own agent.
 ### R-72 Agent defenses are evaluated adaptively
 
 - **Class:** new
+- **Status:** planned
 - **Outcome:** the out-of-band pattern, and adaptive, defense-aware
   attacks in the nightly evaluation.
 - **Practice and precedent:** research has converged on enforcing
@@ -1734,6 +1868,7 @@ protocol, and through Urshanabi's own agent.
 ### R-87 Model-provider credentials are isolated
 
 - **Class:** improvement
+- **Status:** planned
 - **Outcome:** the model gateway holds no long-lived keys; it receives
   short-lived, scoped credentials from the secret store, runs in its own
   process with an egress allowlist of provider endpoints only, and loads
@@ -1757,6 +1892,7 @@ enabled.
 ### R-38 Pending writes are durable by construction
 
 - **Class:** parity
+- **Status:** planned
 - **Outcome:** a proposal is a durable workflow from its first
   version.
 - **Learned from Elysium:** the approval queue lived in process memory
@@ -1768,6 +1904,7 @@ enabled.
 ### R-39 Writes serialize per object across replicas
 
 - **Class:** parity
+- **Status:** planned
 - **Outcome:** compare-and-swap against expected values, plus one
   in-flight write per object across the fleet.
 - **Learned from Elysium:** per-object locks were in-process. [code]
@@ -1777,6 +1914,7 @@ enabled.
 ### R-57 Approvals and actions run on durable execution, once
 
 - **Class:** parity
+- **Status:** planned
 - **Outcome:** a foundation-governed durable workflow engine runs
   approvals, expiries, action retries and automations with
   single-execution semantics. Its partition count cannot be changed
@@ -1812,6 +1950,7 @@ enabled.
 ### R-100 Writeback to sources is off by default
 
 - **Class:** parity
+- **Status:** planned
 - **Outcome:** an approved action changes Urshanabi's own state at
   once. Pushing it back to a source is separate: enabled per source by
   an administrator, delivered through an outbox, and re-checked against
@@ -1829,6 +1968,7 @@ enabled.
 ### R-102 Edits and source data meet under declared rules
 
 - **Class:** parity
+- **Status:** planned
 - **Outcome:** every editable field declares how a user's edit and
   fresh source data are reconciled — the edit persists, the most recent
   value wins, or a named source has priority — with no silent default.
@@ -1855,6 +1995,7 @@ enabled.
 ### R-103 Every change states the version it was based on
 
 - **Class:** foundation
+- **Status:** planned
 - **Outcome:** every object carries a version tag; every edit must
   send the tag it was based on. A change sent without one is refused as
   a missing precondition, and a stale one is refused with the current
@@ -1875,6 +2016,7 @@ enabled.
 ### R-41 Queues cannot be flooded
 
 - **Class:** parity
+- **Status:** planned
 - **Outcome:** fan-out caps, an execute-once-for-all option, and a
   stated answer when a condition matches more than the cap.
 - **Learned from Elysium:** its design notes warned that an automation
@@ -1888,6 +2030,7 @@ enabled.
 ### R-42 Automated changes follow risk-based maker-checker
 
 - **Class:** parity
+- **Status:** planned
 - **Outcome:** every action type declares its risk. An automation acts
   as its owner, so a consequential action it proposes needs approval
   from a human other than that owner; action types declared low-risk may
@@ -1905,6 +2048,7 @@ enabled.
 ### R-43 Nothing holds a stale slice of configuration
 
 - **Class:** parity
+- **Status:** planned
 - **Outcome:** every component reads configuration through the
   generation pinned to the current request.
 - **Learned from Elysium:** after a reload, a surviving component
@@ -1926,6 +2070,7 @@ one deployment into a product.
 ### R-49 Single sign-on first; passwords for break-glass
 
 - **Class:** parity
+- **Status:** planned
 - **Outcome:** federated sign-on, directory provisioning and
   multi-factor authentication through an identity provider. Multi-factor
   authentication is mandatory for every account that can reach regulated
@@ -1940,6 +2085,7 @@ one deployment into a product.
 ### R-50 Policy that can be analysed
 
 - **Class:** improvement
+- **Status:** planned
 - **Outcome:** an analyzable policy language, a reload gate that
   blocks unintended widening, and an admin-only explainer.
 - **Learned from Elysium:** grants are strings, so "does this change
@@ -1951,6 +2097,7 @@ one deployment into a product.
 ### R-52 Tenancy is a product decision, made first
 
 - **Class:** parity
+- **Status:** planned
 - **Outcome:** an owner decision between hosted, customer-cloud and
   disconnected cells, recorded before this phase starts.
 - **Learned from Elysium:** single-tenant by construction — recorded
@@ -1964,6 +2111,7 @@ one deployment into a product.
 ### R-73 Metering, quotas and visible cost
 
 - **Class:** improvement
+- **Status:** planned
 - **Outcome:** per-tenant metering and quotas, indexing throughput
   limits, a cost estimate shown before a query runs, and usage visible
   to the customer.
@@ -1978,6 +2126,7 @@ one deployment into a product.
 ### R-113 Tenant data is protected while in use
 
 - **Class:** foundation
+- **Status:** planned
 - **Outcome:** pooled hosted cells run tenant workloads inside
   hardware-isolated confidential environments, and every workload must
   prove by remote attestation that it is genuine, unmodified code on
@@ -2001,6 +2150,7 @@ one deployment into a product.
 ### R-122 Physical trust caps what a cell may hold
 
 - **Class:** foundation
+- **Status:** planned
 - **Outcome:** every cell declares the physical trust of its hardware
   and site, and that sets the highest classification it may hold: a cell
   whose machines could be physically accessed by an adversary never
@@ -2025,6 +2175,7 @@ What an independent reviewer and a first customer will check.
 ### R-59 Network posture decided in one place
 
 - **Class:** foundation
+- **Status:** planned
 - **Outcome:** a documented posture: where TLS ends, which proxies may
   set client-address headers, and binding as a configuration value.
 - **Learned from Elysium:** bound to loopback for convenience, with
@@ -2036,6 +2187,7 @@ What an independent reviewer and a first customer will check.
 ### R-60 Graceful shutdown drains our own work
 
 - **Class:** foundation
+- **Status:** planned
 - **Outcome:** every service stops accepting work, finishes what it
   holds, then exits.
 - **Learned from Elysium:** no shutdown handling; a restart mid-write
@@ -2046,6 +2198,7 @@ What an independent reviewer and a first customer will check.
 ### R-61 Startup validates what configuration cannot
 
 - **Class:** foundation
+- **Status:** planned
 - **Outcome:** each cell checks every source, credential and table
   shape at startup and reports by name.
 - **Learned from Elysium:** configuration was validated at load;
@@ -2057,6 +2210,7 @@ What an independent reviewer and a first customer will check.
 ### R-63 Upgrades, not only installs
 
 - **Class:** foundation
+- **Status:** planned
 - **Outcome:** every release upgrades the previous one in place,
   migrations included. Cells pull releases the way they pull
   configuration, staged by constraint, with automatic recall.
@@ -2071,6 +2225,7 @@ What an independent reviewer and a first customer will check.
 ### R-64 Restore is exercised, not assumed
 
 - **Class:** foundation
+- **Status:** planned
 - **Outcome:** backups are restored and checked on a schedule. The
   stated restoration target is 72 hours at most.
 - **Learned from Elysium:** backup existed before restore did. [docs,
@@ -2081,6 +2236,7 @@ What an independent reviewer and a first customer will check.
 ### R-65 An independent security audit and penetration test
 
 - **Class:** foundation
+- **Status:** planned
 - **Outcome:** before the first external customer, and after any
   change to authentication, authorization or tenancy. Vulnerability
   scans run at least every six months and penetration tests at least
@@ -2093,6 +2249,7 @@ What an independent reviewer and a first customer will check.
 ### R-77 Ephemeral infrastructure, per-workload egress
 
 - **Class:** parity
+- **Status:** planned
 - **Outcome:** an enforced maximum lifetime, and egress denied by
   default with a declared allowlist per workload.
 - **Practice and precedent:** nodes live at most 48 hours and
@@ -2106,6 +2263,7 @@ What an independent reviewer and a first customer will check.
 ### R-123 Asset inventory and network map, yearly
 
 - **Class:** foundation
+- **Status:** planned
 - **Outcome:** a machine-generated inventory of every component,
   dependency, key and data flow, with a network map, is reviewed at
   least every twelve months and on every significant change.
@@ -2119,6 +2277,7 @@ What an independent reviewer and a first customer will check.
 ### R-124 Ready to be a health-data business associate
 
 - **Class:** foundation
+- **Status:** planned
 - **Outcome:** Urshanabi can sign business associate agreements: its
   controls, breach notification, subcontractor terms and data return or
   destruction are documented and meet the Security Rule, so health
@@ -2144,6 +2303,7 @@ established.
 ### R-117 Installations peer under enforceable policy
 
 - **Class:** improvement
+- **Status:** planned
 - **Outcome:** separate installations — ours or any other conforming
   participant's — share selected objects over the open dataspace
   protocol being standardised through ISO/IEC. Each connection declares
@@ -2175,6 +2335,7 @@ established.
 ### R-118 Federated search, promoted through the pipelines
 
 - **Class:** parity
+- **Status:** planned
 - **Outcome:** opt-in per source, Urshanabi can search external
   systems in place. Results are marked external and unverified, cannot
   be acted on, and are filtered both by the source's own permissions —

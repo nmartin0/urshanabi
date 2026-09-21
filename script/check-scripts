@@ -16,7 +16,9 @@ base=$(mktemp -d) || exit 1
 trap 'rm -rf "$base"' EXIT
 log="$base/log"
 passed=0
+ran=0
 failed=""
+bt=$(printf '\140')  # a literal backtick, for Markdown code spans
 
 # tree NAME SCRIPT...: a fresh repository with the named scripts copied.
 tree() {
@@ -29,6 +31,7 @@ tree() {
 # expect pass|fail DESCRIPTION COMMAND...: run COMMAND, check its status.
 expect() {
     want=$1; what=$2; shift 2
+    ran=$((ran + 1))
     "$@" > "$log" 2>&1
     got=$?
     case "$want-$got" in
@@ -43,6 +46,18 @@ expect() {
         echo "SELF-TEST FAILED: $what (wanted $want, exit $got)"
         sed 's/^/    /' "$log"
         failed="$failed [$what]"
+    fi
+}
+
+# expect_msg pass|fail DESCRIPTION PATTERN COMMAND...: as expect, and
+# the output must also contain PATTERN, so the right check caught it.
+expect_msg() {
+    want=$1; what=$2; pattern=$3; shift 3
+    expect "$want" "$what" "$@"
+    if ! grep -q "$pattern" "$log"; then
+        echo "SELF-TEST FAILED: $what (output lacks \"$pattern\")"
+        sed 's/^/    /' "$log"
+        failed="$failed [$what: message]"
     fi
 }
 
@@ -141,7 +156,7 @@ docs() {
     mkdir -p "$t/conformance"
     printf '# R\n\n## H1. One.\n' > "$t/RULES.md"
     printf '**DENY-01** Denied.\n' > "$t/conformance/BEHAVIOURS.md"
-    printf '# Phase 0\n\n### R-01 First\n\n- **Class:** foundation\n- **Outcome:** x\n- **Done when:** y\n' > "$t/ROADMAP.md"
+    printf '# Phase 0\n\n### R-01 First\n\n- **Class:** foundation\n- **Status:** planned\n- **Outcome:** x\n- **Done when:** y\n' > "$t/ROADMAP.md"
 }
 docs d1; printf 'See R-01, DENY-01 and H1.\n' > "$t/doc.md"
 expect pass "valid citations pass" "$t/script/check-docs"
@@ -151,10 +166,28 @@ docs d3; printf 'See DENY-99.\n' > "$t/doc.md"
 expect fail "a missing property fails" "$t/script/check-docs"
 docs d4; printf 'See H9.\n' > "$t/doc.md"
 expect fail "a missing rule fails" "$t/script/check-docs"
-docs d5; printf '\n### R-01 Again\n\n- **Class:** x\n- **Outcome:** x\n- **Done when:** y\n' >> "$t/ROADMAP.md"
+docs d5; printf '\n### R-01 Again\n\n- **Class:** x\n- **Status:** planned\n- **Outcome:** x\n- **Done when:** y\n' >> "$t/ROADMAP.md"
 expect fail "a repeated item number fails" "$t/script/check-docs"
-docs d6; printf '\n### R-02 Second\n\n- **Class:** x\n- **Outcome:** x\n' >> "$t/ROADMAP.md"
+docs d6; printf '\n### R-02 Second\n\n- **Class:** x\n- **Status:** planned\n- **Outcome:** x\n' >> "$t/ROADMAP.md"
 expect fail "an item without a done-when fails" "$t/script/check-docs"
+
+status() {  # status NAME STATUS: a one-item roadmap with this status
+    docs "$1"
+    mkdir -p "$t/docs" && printf 'evidence\n' > "$t/docs/proof.md"
+    sed "s|^- \*\*Status:\*\* planned$|- **Status:** $2|" "$t/ROADMAP.md" > "$t/r" && mv "$t/r" "$t/ROADMAP.md"
+}
+status d7 "done — proved (${bt}docs/proof.md${bt})"
+expect pass "a done item citing existing evidence passes" "$t/script/check-docs"
+status d8 "done — trust me"
+expect_msg fail "a done item without evidence fails" "cites no evidence" "$t/script/check-docs"
+status d9 "done — proved (${bt}docs/missing.md${bt})"
+expect_msg fail "a status citing a missing path fails" "does not exist" "$t/script/check-docs"
+status d10 "in progress — half built"
+expect_msg fail "in progress without what remains fails" "does not say what remains" "$t/script/check-docs"
+status d11 "finished"
+expect_msg fail "an unknown status fails" "unknown status" "$t/script/check-docs"
+docs d12; sed '/^- \*\*Status:\*\*/d' "$t/ROADMAP.md" > "$t/r" && mv "$t/r" "$t/ROADMAP.md"
+expect_msg fail "an item without a status fails" "has no status" "$t/script/check-docs"
 
 # --- check-boundaries -------------------------------------------------
 tree b1 check-boundaries
@@ -195,17 +228,6 @@ if [ ! -e "$t/.tools/bin/fake" ]; then passed=$((passed + 1))
 else failed="$failed [nothing is installed on mismatch]"; echo "SELF-TEST FAILED: nothing is installed on mismatch"; fi
 
 # --- contracts: breaking changes and guardrails (roadmap R-06) -----
-# expect_msg pass|fail DESCRIPTION PATTERN COMMAND...: as expect, and
-# the output must also contain PATTERN, so the right check caught it.
-expect_msg() {
-    want=$1; what=$2; pattern=$3; shift 3
-    expect "$want" "$what" "$@"
-    if ! grep -q "$pattern" "$log"; then
-        echo "SELF-TEST FAILED: $what (output lacks \"$pattern\")"
-        sed 's/^/    /' "$log"
-        failed="$failed [$what: message]"
-    fi
-}
 # commit_as_test MESSAGE: commit everything in the current repository.
 commit_as_test() {
     git add -A && git -c user.name=t -c user.email=t commit -q -m "$1"  # name-ok
@@ -260,7 +282,6 @@ printf 'deps:\n  - registry.example/some/module\n' >> "$t/contracts/buf.yaml"  #
 expect_msg fail "a hosted dependency breaks a guardrail" "GUARDRAIL: no dependency on hosted" "$t/contracts/script/test"
 
 # --- check-compliance: the matrix proves itself (R-125) -------------
-bt=$(printf '\140')  # a literal backtick, for Markdown code spans
 matrix() {  # matrix NAME ROW: a tree whose matrix holds one row
     tree "$1" check-compliance
     mkdir -p "$t/docs"
@@ -370,6 +391,15 @@ mkdir -p "$t/contracts/script" && printf '# c\n' > "$t/contracts/README.md"
 printf '#!/bin/sh\nexit 1\n' > "$t/contracts/script/test-integration"
 chmod +x "$t/contracts/script/test-integration"
 expect fail "a failing integration test fails test-integration" "$t/script/test-integration"
+
+# Guard: a self-test whose helper is missing or misspelled fails with
+# "not found" and records nothing. Count the calls written in this file
+# and require that every one ran.
+written=$(grep -c -E '^[[:space:]]*expect[a-z_]* (pass|fail) ' "$repo/script/check-scripts")
+if [ "$ran" -ne "$written" ]; then
+    echo "SELF-TEST FAILED: $written self-tests are written but $ran ran"
+    failed="$failed [every written self-test runs]"
+fi
 
 if [ -n "$failed" ]; then
     echo "check-scripts FAILED:$failed"

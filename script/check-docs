@@ -4,7 +4,9 @@
 #   - every behaviour property cited exists in conformance/BEHAVIOURS.md;
 #   - every hard rule (H1..) and standard (E1..) cited exists in RULES.md;
 #   - roadmap item numbers are unique, and every item not retired has
-#     a class, an outcome and a done-when.
+#     a class, an outcome, a done-when and a status: planned; in
+#     progress, saying what remains; or done, citing evidence. Any path
+#     a status cites must exist.
 set -u
 cd "$(dirname "$0")/.." || exit 1
 
@@ -22,8 +24,28 @@ function each(line, re, kind, path, ln,   s, tok) {
         s = substr(s, RSTART + RLENGTH - 1)
     }
 }
+function check_paths(st,   rest, i, path) {
+    rest = st
+    while (match(rest, /`[^`]+`/)) {
+        path = substr(rest, RSTART + 1, RLENGTH - 2)
+        if (path ~ /\// && system("test -e \"" path "\"") != 0) {
+            print "DOCS ROADMAP.md: " item " cites " path ", which does not exist"; bad = 1
+        }
+        rest = substr(rest, RSTART + RLENGTH)
+    }
+}
 function finish_item() {
     if (item != "" && !retired) {
+        st = status
+        if (st == "") { print "DOCS ROADMAP.md: " item " has no status"; bad = 1 }
+        else if (st == "planned") ;
+        else if (st ~ /^done — /) {
+            if (st !~ /`[^`]+`/) { print "DOCS ROADMAP.md: " item " is done but cites no evidence"; bad = 1 }
+            check_paths(st); ndone++
+        } else if (st ~ /^in progress — /) {
+            if (st !~ /remaining: /) { print "DOCS ROADMAP.md: " item " is in progress but does not say what remains"; bad = 1 }
+            check_paths(st); nprog++
+        } else { print "DOCS ROADMAP.md: " item " has an unknown status: " st; bad = 1 }
         if (!hascls) { print "DOCS ROADMAP.md: " item " has no class"; bad = 1 }
         if (!hasout) { print "DOCS ROADMAP.md: " item " has no outcome"; bad = 1 }
         if (!hasdone) { print "DOCS ROADMAP.md: " item " has no done-when"; bad = 1 }
@@ -36,9 +58,12 @@ BEGIN {
             id = l; sub(/^### (~~)?/, "", id); sub(/ .*/, "", id)
             if (id in items) { print "DOCS ROADMAP.md: " id " appears twice"; bad = 1 }
             items[id] = 1; nitems++; item = id; retired = (l ~ /^### ~~/)
-            hascls = hasout = hasdone = 0; continue
+            hascls = hasout = hasdone = 0; status = ""; instatus = 0; continue
         }
         if (l ~ /^# /) { finish_item(); item = "" }
+        if (instatus && l ~ /^  [^ ]/) { t = l; sub(/^ +/, "", t); status = status " " t; continue }
+        instatus = 0
+        if (l ~ /^- \*\*Status:\*\* /) { status = l; sub(/^- \*\*Status:\*\* /, "", status); instatus = 1; continue }
         if (l ~ /^- \*\*Class:\*\*/) hascls = 1
         if (l ~ /^- \*\*Outcome:\*\*/) hasout = 1
         if (l ~ /^- \*\*Done when:\*\*/) hasdone = 1
@@ -71,5 +96,5 @@ BEGIN {
     if (nfiles == 0) { print "FAIL: no Markdown files found"; exit 1 }
     if (nitems == 0) { print "FAIL: no roadmap items found"; exit 1 }
     if (bad) exit 1
-    printf "check-docs: %d files; %d roadmap items, %d properties, %d rules; every citation resolves.\n", nfiles, nitems, nprops, nrules
+    printf "check-docs: %d files; %d roadmap items (%d done, %d in progress), %d properties, %d rules; every citation resolves.\n", nfiles, nitems, ndone, nprog, nprops, nrules
 }'
