@@ -45,5 +45,5 @@ same pinned versions (`script/README.md`).
 
 ## Status
 
-Planning is complete, and Phase 0 has begun: the repository checks and
-CI run on every push. No component is built yet.
+Phase 0 is under way. The repository checks and CI run on every push,
+and the contracts component is built; the services are not yet.

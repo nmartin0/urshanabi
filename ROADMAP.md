@@ -724,10 +724,12 @@ and lineage.
 ### R-104 One writer per table, three layers deep
 
 - **Class:** foundation
-- **Outcome:** each table has one owning pipeline; the orchestrator
-  runs at most one run of it at a time; and the table format's own
-  conflict check remains the guarantee, so correctness never depends on
-  the first two. Commits are batched rather than frequent.
+- **Outcome:** each table has exactly one owner (R-79): ingestion for
+  every raw table, and one owning pipeline for each cleaned and curated
+  table. The orchestrator runs at most one run of a pipeline at a time,
+  and the table format's own conflict check remains the guarantee, so
+  correctness never depends on the first two. Commits are batched rather
+  than frequent.
 - **Practice and precedent:** the table format commits by atomically
   swapping a pointer and, on collision, re-validating and retrying;
   practitioners report retries becoming the bottleneck with many writers

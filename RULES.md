@@ -423,8 +423,10 @@ cascade; a fully green suite has shipped a visibly broken screen.
 
 A container is not the target machine. Runtime version, installed
 tools, timezone, free disk, and whether a running process has
-reloaded new code have each caused a real failure. Pin a non-UTC
-timezone in tests — one behind UTC, one observing daylight saving.
+reloaded new code have each caused a real failure. UTC is the one
+timezone (roadmap R-128), and a machine set to UTC hides code that
+reads local time, so date-sensitive tests run under UTC, a zone behind
+it and a zone observing daylight saving (R-14).
 
 ## 14. Hand over everything, in the same block.
 
