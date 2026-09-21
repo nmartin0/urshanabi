@@ -567,6 +567,66 @@ and lineage.
   systems-language table library's retry and validation are verified
   before any pipeline depends on them.
 
+### R-110 Non-append table writes use the reference implementation
+
+- **Class:** foundation
+- **Outcome:** raw ingestion appends through the systems-language
+  table library, and all reads use it; every overwrite, delete,
+  row-level update, merge and compaction — including retention deletions
+  (R-40) — runs through the table format's reference implementation in
+  the distributed engines. The systems-language library takes over each
+  operation only once it ships and passes our conformance tests.
+- **Practice and precedent:** the systems-language table library
+  supports only fast appends; overwrite, partition replacement, file
+  deletion, row-level changes and compaction are listed as missing,
+  blocking even a foundation project's native write path. Another
+  language's library fixed a bug in August 2026 where retrying a
+  conflicting commit could resurrect deleted rows, because it replayed
+  changes instead of re-applying them as the reference implementation
+  does. [precedent]
+- **Learned from Elysium:** wrote its mirror with a library in its own
+  language, which lacked commit retries until recently. [docs]
+- **Done when:** a check fails if any systems-language component
+  issues a non-append table operation; and a forced conflict during a
+  compaction never resurrects a deleted row.
+
+### R-111 Tables use the format's third version
+
+- **Class:** foundation
+- **Outcome:** every table is created at the table format's third
+  version: row lineage gives each row a permanent id and the sequence
+  number of the change that last touched it, which becomes the index
+  version (R-105) and enables change capture straight from tables;
+  deletion vectors make updates and deletes compact; built-in table
+  encryption keys support R-91.
+- **Practice and precedent:** the third version was ratified in 2025
+  and shipped across major engines through 2026; a proposed fourth
+  version would consolidate each commit into a single file, easing
+  commit contention. [precedent]
+- **Learned from Elysium:** used the second version. [code]
+- **Done when:** a created table reports version 3, and an index write
+  carries the row's last-updated sequence number.
+
+### R-107 Freshness is declared per object type
+
+- **Class:** improvement
+- **Outcome:** every object type declares its freshness: real-time
+  (changes streamed from the source and processed continuously, target
+  in seconds), near-real-time (small frequent batches, target in
+  minutes) or scheduled (periodic runs). Each has a stated target and an
+  alert when it is missed. A source that cannot stream its changes is
+  checked on an interval, and its freshness can never be declared
+  tighter than that interval.
+- **Practice and precedent:** the leading platform streams changes
+  into its index in seconds to minutes; practitioners state freshness as
+  a service-level objective per dataset. End-to-end freshness is set by
+  the pipeline, not the index, which is only the last step. [precedent]
+- **Learned from Elysium:** read sources live or from a mirror
+  refreshed on demand, with no declared targets. [code]
+- **Done when:** a real-time type shows a source change on screen
+  within its target under load, and a missed target raises an alert
+  naming the type.
+
 ### R-97 Transformations are versioned, tested code
 
 - **Class:** parity
@@ -663,8 +723,14 @@ and lineage.
 ### R-75 Distributed compute, batch and streaming
 
 - **Class:** parity
-- **Outcome:** single-node by default, distributed beyond one node,
-  and streaming indexing designed to merge edits from the start.
+- **Outcome:** single-node by default. Beyond one node, the
+  foundation-governed distributed batch engine runs with a native
+  accelerator built on the same query engine as the read plane, and jobs
+  are written against that engine's standard remote-client protocol, so
+  a faster compatible engine can replace it without rewriting jobs.
+  Streaming uses the foundation-governed stream processor at version 2,
+  whose state lives on object storage and recovers in seconds. Streaming
+  indexing merges edits from the start.
 - **Practice and precedent:** autoscaling distributed batch and
   streaming engines run beside single-node engines, which handle
   terabyte-scale inputs of the right shape. Streaming object types there
@@ -875,18 +941,24 @@ then audit and operations.
 - **What it costs:** exposure bounded by the watermark rather than
   zero; custody of another copy of customer data; edits merged into the
   index; indexing to operate.
-- **Decision:** settled by precedent (2026-09-21): a distributed
-  search engine under neutral foundation governance. Ontology serving
-  means frequent edits, point lookups and high query rates. The
-  embeddable alternative treats indexed data as immutable, was designed
-  for high-volume, low-query-rate logs, and its stewards moved to one
-  company's product in 2025. The leading platform's first object store
-  was built on a distributed document store and search engine, and
-  RULES.md H4a favours neutral governance.
+- **Decision:** a serving engine whose data structures are updated in
+  place and searchable immediately, with structured filtering, text,
+  vector retrieval and machine-learned ranking in one query (owner,
+  2026-09-21). It has served billions of documents for over a decade,
+  including about 800,000 queries a second across one large deployment.
+  Chosen over a foundation-governed engine whose immutable segments
+  rewrite every edit and publish changes about once a second. Governance
+  risk accepted and contained: one company steers it, with its founding
+  customer holding a stake and board seat; its licence is permissive, so
+  released versions can always be used and forked; releases are pinned;
+  any licence or governance change triggers a review; and because the
+  index is disposable and sits behind our own interface (R-102), moving
+  to another engine is a reindex, not a migration.
 - **Done when:** after a reclassification, no member of the former
   audience sees the object once the watermark has advanced, measured; no
-  count includes an invisible row.
-
+  count includes an invisible row; an edit is searchable within one
+  second of acknowledgement; and a documented exit drill rebuilds the
+  index on the alternative engine from curated data.
 ### ~~R-19 The lake format does not serve point lookups~~
 
 - **Retired.** Merged into R-70, which now covers how the ontology is
@@ -997,6 +1069,92 @@ then audit and operations.
   was a new request. [code]
 - **Done when:** a request retried after a dropped connection is
   applied once, and reusing a key with a different body is refused.
+
+### R-108 Staleness is always visible
+
+- **Class:** improvement
+- **Outcome:** every record and result shows how current it is, and
+  anything past its declared freshness target (R-107) is marked as stale
+  rather than presented as current.
+- **Practice and precedent:** stale data shown as current is a
+  recognised failure of analytical systems; freshness indicators are
+  standard in data products. [precedent]
+- **Learned from Elysium:** reported whether reads were live or from
+  its mirror, and when it last synced, on a separate screen. [code]
+- **Done when:** a record whose type misses its target is visibly
+  marked stale on every screen that shows it.
+
+### R-109 Screens update live
+
+- **Class:** improvement
+- **Outcome:** when a record changes, every open screen showing it
+  updates without a reload; a person's own edits appear everywhere
+  immediately (R-102), and a save confirms only once the change is
+  visible.
+- **Practice and precedent:** the leading platform's documentation
+  says only one of its applications supports live data refresh, even for
+  streaming object types, and others must be reloaded; serving engines
+  that make writes visible immediately support live screens directly.
+  [precedent]
+- **Learned from Elysium:** screens refreshed only when reloaded.
+  [code]
+- **Done when:** an edit made in one session appears in another open
+  session within the freshness target, without a reload.
+
+### R-114 Large results travel as columnar streams
+
+- **Class:** foundation
+- **Outcome:** bulk results move between services and to analytical
+  clients as columnar streams over a standard columnar SQL wire
+  protocol, including parallel streams for distributed reads;
+  request-and-response contracts (R-06) stay for everything else.
+- **Practice and precedent:** row-oriented database protocols
+  transpose columnar results into rows and back; one practitioner
+  describes a query computed in 300 milliseconds taking forty seconds to
+  hand over. The columnar protocol also serves older row-based clients.
+  [precedent]
+- **Learned from Elysium:** returned every result as row-shaped JSON.
+  [code]
+- **Done when:** a ten-million-row result transfers at least an order
+  of magnitude faster than the row-shaped equivalent, measured.
+
+### R-116 Query plans use the standard cross-engine representation
+
+- **Class:** foundation
+- **Outcome:** the query service can express its plans in the standard
+  cross-engine query plan representation, so an accelerated engine —
+  including GPU-native engines now emerging — can execute them without
+  changing any caller.
+- **Practice and precedent:** a 2026 research engine executing
+  standard plans on GPUs reported about 7 times the speed of a CPU
+  engine at the same hardware cost, and up to 12.5 times in a
+  distributed setting; it plugs in through that standard representation.
+  [precedent]
+- **Learned from Elysium:** had no plan representation outside its own
+  process. [code]
+- **Done when:** a plan exported in the standard representation and
+  re-imported produces identical results.
+
+### R-112 Key exchange is post-quantum hybrid
+
+- **Class:** foundation
+- **Outcome:** every TLS connection negotiates the hybrid post-quantum
+  key exchange standardised as RFC 10024, internally and at the edge; a
+  cryptographic inventory lists every key and algorithm in use;
+  post-quantum signatures follow as their standards and libraries
+  mature.
+- **Practice and precedent:** the hybrid exchange is the default in
+  major browsers and in one services-language standard library since its
+  2025 release; a national security algorithm timeline recommends hybrid
+  deployment now and post-quantum-only operation by 2033; a 2026
+  measurement found government and defence adoption effectively absent,
+  while encrypted data can be harvested now and decrypted later.
+  [precedent]
+- **Learned from Elysium:** used classical TLS through a reverse
+  proxy. [code]
+- **Done when:** every internal and external connection negotiates the
+  hybrid exchange, and a component that cannot fails the inventory
+  check.
 
 ### R-25 Say how authoritative a count is
 
@@ -1143,6 +1301,25 @@ protocol, and through Urshanabi's own agent.
   sees exactly what that user sees: the uniform-denial properties pass
   through the protocol.
 
+### R-115 Agents work with other organisations' agents
+
+- **Class:** parity
+- **Outcome:** Urshanabi's agent can be reached by, and can delegate
+  to, other agents through the foundation-governed agent-to-agent
+  protocol, always as the user and within the agent envelope (section
+  3.5 of the architecture); tools and data stay on the agent-tool
+  protocol (R-99).
+- **Practice and precedent:** the agent-to-agent protocol reached
+  production use across the major clouds with over 150 supporting
+  organisations in its first year, and is described as complementary to
+  the agent-tool protocol: one connects agents to peers, the other to
+  tools. [precedent]
+- **Learned from Elysium:** its agent could talk to nothing outside
+  itself. [code]
+- **Done when:** an external agent delegating a task receives only
+  what the delegating user may see, and a delegated action goes through
+  approvals like any other.
+
 ### R-26 The agent's context is budgeted
 
 - **Class:** improvement
@@ -1202,7 +1379,9 @@ protocol, and through Urshanabi's own agent.
 
 - **Class:** parity
 - **Outcome:** hosted models or a batching inference server, chosen
-  per tenant.
+  per tenant. A distributed inference layer that routes requests by
+  cached prompt prefixes may be added for throughput only with caches
+  salted per user, so no two users ever share a cache entry (R-30).
 - **Learned from Elysium:** a desktop model runner with 3–4B models;
   its own notes say the query screen was too slow to use. [docs]
 - **Done when:** a load test at the target concurrency meets the
@@ -1474,6 +1653,26 @@ one deployment into a product.
   route, and a 20-question window per user; nothing per tenant. [code]
 - **Done when:** in a load test a noisy tenant is throttled without
   affecting another, and estimates fall within a stated tolerance.
+
+### R-113 Tenant data is protected while in use
+
+- **Class:** foundation
+- **Outcome:** pooled hosted cells run tenant workloads inside
+  hardware-isolated confidential environments, and every workload must
+  prove by remote attestation that it is genuine, unmodified code on
+  genuine hardware before the key service releases any key; other cells
+  may enable the same.
+- **Practice and precedent:** hardware-isolated confidential computing
+  is a production default across mainstream servers and major clouds in
+  2026, with overhead reported below 5 percent for one of the two main
+  technologies; the container-orchestrator integration became a
+  foundation incubating project in July 2026; attestation gates key
+  release so only verified code receives secrets. [precedent]
+- **Learned from Elysium:** had no notion of tenants or of protecting
+  data in memory. [code]
+- **Done when:** a workload whose attestation fails receives no keys,
+  and an operator with host access cannot read tenant data from memory,
+  verified by test.
 
 ---
 
