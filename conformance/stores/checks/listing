@@ -1,0 +1,21 @@
+#!/bin/sh
+# conformance/stores/checks/listing: a listing pages through every key under a prefix exactly once
+# (roadmap R-139). Exits 0 when the store behaves so, 1 when it does not.
+set -u
+r=conformance/stores/request
+b=/$STORE_BUCKET
+for k in list/1 list/2 list/3 list/4 list/5 elsewhere/1; do
+    [ "$(printf x | "$r" PUT "$b/$k" --data-binary @-)" = 200 ] || { echo "writing $k was refused"; exit 1; }
+done
+: > "$WORK/keys"; token=""
+for _ in 1 2 3 4 5 6; do
+    q="?list-type=2&prefix=list/&max-keys=2"
+    # Only reserved characters are encoded: the signature requires
+    # letters and digits to stay as they are.
+    [ -n "$token" ] && q="$q&continuation-token=$(printf '%s' "$token" | sed 's/%/%25/g; s/+/%2B/g; s|/|%2F|g; s/=/%3D/g')"
+    [ "$("$r" GET "$b$q")" = 200 ] || { echo "a listing was refused"; exit 1; }
+    grep -o '<Key>[^<]*</Key>' "$WORK/body" | sed 's/<[^>]*>//g' >> "$WORK/keys"
+    token=$(grep -o '<NextContinuationToken>[^<]*' "$WORK/body" | sed 's/.*>//')
+    [ -n "$token" ] || break
+done
+[ "$(sort "$WORK/keys" | tr '\n' ' ')" = "list/1 list/2 list/3 list/4 list/5 " ] || { echo "the pages held: $(tr '\n' ' ' < "$WORK/keys")"; exit 1; }

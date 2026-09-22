@@ -1,0 +1,41 @@
+#!/bin/sh
+# conformance/stores/drivers/development-store: the lightweight store
+# development and CI use (roadmap R-139). It keeps a fixed 100 MiB of disk
+# free, not the default one per cent of the disk's size, which on a large
+# disk can exceed what is free and turn every volume read-only.
+#   start   run it with one identity whose secret is generated for this
+#           run, create the suite's bucket, and write the endpoint and
+#           credentials to $WORK/store.env as KEY=VALUE lines
+#   stop    stop it
+# $WORK and $STORE_PORT come from the runner.
+set -u
+case "${1:-}" in
+    start)
+        mkdir -p "$WORK/store/data" || exit 1
+        secret=$(od -An -N24 -tx1 /dev/urandom | tr -d ' \n')
+        printf '{"identities":[{"name":"suite","credentials":[{"accessKey":"suite","secretKey":"%s"}],"actions":["Admin","Read","Write","List","Tagging"]}]}' "$secret" > "$WORK/store/identities.json"
+        seaweedfs server -dir="$WORK/store/data" -ip=127.0.0.1 -master.port=$((STORE_PORT + 1)) -volume.port=$((STORE_PORT + 2)) -filer.port=$((STORE_PORT + 3)) -volume.minFreeSpace=100MiB -s3 -s3.port="$STORE_PORT" -s3.config="$WORK/store/identities.json" > "$WORK/store/log" 2>&1 &  # name-ok
+        echo $! > "$WORK/store/pid"
+        printf 'STORE_ENDPOINT=http://127.0.0.1:%s\nSTORE_ACCESS=suite\nSTORE_SECRET=%s\nSTORE_BUCKET=suite\n' "$STORE_PORT" "$secret" > "$WORK/store.env"
+        # Ready when the store creates the suite's bucket for a signed request.
+        scheme="aws:amz:us-east-1:s3"  # name-ok
+        for _ in $(seq 1 80); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' -X PUT --aws-sigv4 "$scheme" --user "suite:$secret" "http://127.0.0.1:$STORE_PORT/suite")  # name-ok
+            [ "$code" = 200 ] && exit 0
+            sleep 0.25
+        done
+        echo "the development store did not start; its log is $WORK/store/log"; exit 1 ;;
+    stop)
+        # Ask it to stop, and force it after two seconds: the store is thrown
+        # away after each run, so a slow graceful shutdown protects nothing.
+        # A process that has exited but not been collected counts as gone.
+        [ -f "$WORK/store/pid" ] || exit 0
+        pid=$(cat "$WORK/store/pid")
+        running() { state=$(ps -o stat= -p "$pid" 2>/dev/null) && [ "${state#Z}" = "$state" ]; }
+        kill "$pid" 2>/dev/null
+        for _ in $(seq 1 8); do running || exit 0; sleep 0.25; done
+        kill -9 "$pid" 2>/dev/null
+        exit 0 ;;
+    *)
+        echo "usage: conformance/stores/drivers/development-store start|stop" >&2; exit 2 ;;
+esac

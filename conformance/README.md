@@ -17,3 +17,9 @@ alternates requests between them (roadmap R-18); the run fails unless
 both answered. A property exits 0 when it holds, 1 when it does
 not, and 2 when Urshanabi cannot yet be held to it, naming the roadmap
 item it waits for. Each property is seen to fail before it passes.
+
+The object-storage compatibility suite (roadmap R-139) runs in the same
+pass: every store in `stores/drivers/` is started by its driver, and
+every check in `stores/checks/` runs against it through the signing
+helper `stores/request`. Each run generates its own secret; none is
+committed.

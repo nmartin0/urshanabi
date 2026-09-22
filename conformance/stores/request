@@ -1,0 +1,11 @@
+#!/bin/sh
+# conformance/stores/request METHOD PATH [EXTRA-ARGUMENT...]: one request to
+# the store under test, signed with the standard object-storage signature
+# (roadmap R-139). The body lands in $WORK/body and the lower-cased
+# headers in $WORK/headers; the status is printed. $STORE_ENDPOINT,
+# $STORE_ACCESS and $STORE_SECRET come from the store's driver.
+set -u
+method=$1; path=$2; shift 2
+scheme="aws:amz:${STORE_REGION:-us-east-1}:s3"  # name-ok
+curl -s -X "$method" -o "$WORK/body" -D "$WORK/raw" -w '%{http_code}' --aws-sigv4 "$scheme" --user "$STORE_ACCESS:$STORE_SECRET" "$@" "$STORE_ENDPOINT$path" || { echo 000; exit 1; }  # name-ok
+tr -d '\r' < "$WORK/raw" | tr '[:upper:]' '[:lower:]' > "$WORK/headers"

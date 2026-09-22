@@ -1,0 +1,8 @@
+#!/bin/sh
+# conformance/stores/checks/missing: a missing object is reported missing, not empty
+# (roadmap R-139). Exits 0 when the store behaves so, 1 when it does not.
+set -u
+r=conformance/stores/request
+b=/$STORE_BUCKET
+[ "$("$r" GET "$b/never-written")" = 404 ] || { echo "reading a missing object did not answer 404"; exit 1; }
+[ "$("$r" HEAD "$b/never-written" -I)" = 404 ] || { echo "a missing object's metadata did not answer 404"; exit 1; }

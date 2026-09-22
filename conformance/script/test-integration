@@ -13,7 +13,10 @@ STACK="conformance-$$"
 PORT=$((30000 + $$ % 20000))
 DRIVER="$PWD/conformance/drivers/urshanabi"
 export PATH WORK STACK PORT DRIVER
-trap '"$DRIVER" stop; rm -rf "$WORK"' EXIT
+STORE_PORT=$((PORT + 100))
+export STORE_PORT
+stop_stores() { for d in conformance/stores/drivers/*; do [ -x "$d" ] && "$d" stop; done; }
+trap '"$DRIVER" stop; stop_stores; rm -rf "$WORK"' EXIT
 "$DRIVER" start || { echo "conformance: FAILED: the stack did not start"; exit 1; }
 
 found=0; passed=0; pending=0; failed=""
@@ -34,8 +37,26 @@ for r in a b; do
     n=$("$DRIVER" answered "$r")
     [ "$n" -gt 0 ] || { echo "conformance: FAILED: replica $r answered no requests, so the replicas were not both exercised"; exit 1; }
 done
+# The object-storage checks (R-139): every supported store must pass every
+# check, each store started by its own driver.
+checks=0
+for d in conformance/stores/drivers/*; do
+    [ -x "$d" ] || continue
+    store=${d##*/}
+    if ! "$d" start; then failed="$failed $store"; echo "  FAIL     $store: the store did not start"; continue; fi
+    while IFS='=' read -r key value; do export "$key=$value"; done < "$WORK/store.env"
+    for c in conformance/stores/checks/*; do
+        [ -x "$c" ] || continue
+        out=$("$c"); rc=$?
+        if [ "$rc" -eq 0 ]; then checks=$((checks + 1)); echo "  pass     $store: ${c##*/}"
+        else failed="$failed $store:${c##*/}"; echo "  FAIL     $store: ${c##*/}: $out"; fi
+    done
+    "$d" stop
+done
+[ "$checks" -gt 0 ] || { echo "conformance: FAILED: no store checks ran"; exit 1; }
+
 if [ -n "$failed" ]; then
     echo "conformance: FAILED:$failed"
     exit 1
 fi
-echo "conformance: $passed properties hold, $pending pending."
+echo "conformance: $passed properties hold, $pending pending; $checks store checks hold."

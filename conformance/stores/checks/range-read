@@ -1,0 +1,10 @@
+#!/bin/sh
+# conformance/stores/checks/range-read: a byte range reads back exactly that range
+# (roadmap R-139). Exits 0 when the store behaves so, 1 when it does not.
+set -u
+r=conformance/stores/request
+b=/$STORE_BUCKET
+printf '0123456789' > "$WORK/object"
+[ "$("$r" PUT "$b/range" --data-binary @"$WORK/object")" = 200 ] || { echo "the write was refused"; exit 1; }
+[ "$("$r" GET "$b/range" -H 'Range: bytes=3-6')" = 206 ] || { echo "a range read did not answer 206"; exit 1; }
+[ "$(cat "$WORK/body")" = 3456 ] || { echo "the range read returned $(cat "$WORK/body"), not 3456"; exit 1; }

@@ -1,0 +1,15 @@
+#!/bin/sh
+# conformance/stores/checks/deletion: deleted objects are gone, one at a time and in a batch
+# (roadmap R-139). Exits 0 when the store behaves so, 1 when it does not.
+set -u
+r=conformance/stores/request
+b=/$STORE_BUCKET
+for k in one two three; do
+    [ "$(printf x | "$r" PUT "$b/del/$k" --data-binary @-)" = 200 ] || { echo "writing del/$k was refused"; exit 1; }
+done
+[ "$("$r" DELETE "$b/del/one")" = 204 ] || { echo "a single deletion was refused"; exit 1; }
+[ "$("$r" GET "$b/del/one")" = 404 ] || { echo "a deleted object still reads"; exit 1; }
+printf '<Delete><Object><Key>del/two</Key></Object><Object><Key>del/three</Key></Object></Delete>' > "$WORK/batch"
+md5=$(openssl dgst -md5 -binary "$WORK/batch" | base64)  # name-ok
+[ "$("$r" POST "$b?delete" --data-binary @"$WORK/batch" -H "Content-MD5: $md5")" = 200 ] || { echo "a batch deletion was refused"; exit 1; }
+for k in two three; do [ "$("$r" GET "$b/del/$k")" = 404 ] || { echo "del/$k survived the batch"; exit 1; }; done

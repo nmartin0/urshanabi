@@ -1,0 +1,25 @@
+#!/bin/sh
+# conformance/stores/checks/multipart: a multipart upload assembles its parts in order, and an aborted one leaves nothing
+# (roadmap R-139). Exits 0 when the store behaves so, 1 when it does not.
+set -u
+r=conformance/stores/request
+b=/$STORE_BUCKET
+head -c 5242880 /dev/urandom > "$WORK/part1"; printf 'the last part' > "$WORK/part2"
+[ "$("$r" POST "$b/big?uploads")" = 200 ] || { echo "starting an upload was refused"; exit 1; }
+id=$(grep -o '<UploadId>[^<]*' "$WORK/body" | sed 's/.*>//')
+printf '<CompleteMultipartUpload>' > "$WORK/complete"
+for n in 1 2; do
+    [ "$("$r" PUT "$b/big?partNumber=$n&uploadId=$id" --data-binary @"$WORK/part$n")" = 200 ] || { echo "part $n was refused"; exit 1; }
+    printf '<Part><PartNumber>%s</PartNumber><ETag>%s</ETag></Part>' "$n" "$(sed -n 's/^etag: //p' "$WORK/headers")" >> "$WORK/complete"
+done
+printf '</CompleteMultipartUpload>' >> "$WORK/complete"
+[ "$("$r" POST "$b/big?uploadId=$id" --data-binary @"$WORK/complete")" = 200 ] || { echo "completing the upload was refused"; exit 1; }
+cat "$WORK/part1" "$WORK/part2" > "$WORK/whole"
+if ! { [ "$("$r" GET "$b/big")" = 200 ] && cmp -s "$WORK/body" "$WORK/whole"; }; then
+    echo "the assembled object differs from its parts"; exit 1
+fi
+[ "$("$r" POST "$b/abandoned?uploads")" = 200 ] || { echo "starting a second upload was refused"; exit 1; }
+id=$(grep -o '<UploadId>[^<]*' "$WORK/body" | sed 's/.*>//')
+[ "$("$r" PUT "$b/abandoned?partNumber=1&uploadId=$id" --data-binary @"$WORK/part2")" = 200 ] || { echo "the abandoned upload's part was refused"; exit 1; }
+[ "$("$r" DELETE "$b/abandoned?uploadId=$id")" = 204 ] || { echo "aborting the upload was refused"; exit 1; }
+[ "$("$r" GET "$b/abandoned")" = 404 ] || { echo "an aborted upload left an object"; exit 1; }

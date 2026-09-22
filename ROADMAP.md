@@ -903,7 +903,16 @@ and lineage.
 ### R-139 Object storage through the standard interface only
 
 - **Class:** foundation
-- **Status:** planned
+- **Status:** in progress — the compatibility suite covers exact
+  read-back, range reads, metadata, missing objects, paged listing,
+  single and batch deletion, multipart upload and abort, and
+  authentication refusals; the development store, pinned and
+  checksum-verified, passes every check on every push, and every check
+  failed against a planted store that honours nothing
+  (`conformance/stores/checks/read-back`,
+  `conformance/stores/drivers/development-store`); remaining: drivers
+  for the self-hosted production store and cloud providers' stores, and
+  detecting a component that uses an operation outside the suite.
 - **Outcome:** every component reads and writes objects only through
   the de facto standard object-storage interface, using none of any one
   store's own features, so changing stores is a mirroring job, not a

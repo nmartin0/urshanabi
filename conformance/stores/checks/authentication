@@ -1,0 +1,9 @@
+#!/bin/sh
+# conformance/stores/checks/authentication: a wrong secret and an unsigned request are both refused
+# (roadmap R-139). Exits 0 when the store behaves so, 1 when it does not.
+set -u
+r=conformance/stores/request
+b=/$STORE_BUCKET
+[ "$(printf x | "$r" PUT "$b/private" --data-binary @-)" = 200 ] || { echo "the write was refused"; exit 1; }
+[ "$(STORE_SECRET=wrong "$r" GET "$b/private")" = 403 ] || { echo "a wrong secret was not refused"; exit 1; }
+[ "$(curl -s -o /dev/null -w '%{http_code}' "$STORE_ENDPOINT$b/private")" = 403 ] || { echo "an unsigned request was not refused"; exit 1; }  # name-ok

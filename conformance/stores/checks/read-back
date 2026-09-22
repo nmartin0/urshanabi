@@ -1,0 +1,14 @@
+#!/bin/sh
+# conformance/stores/checks/read-back: an object reads back exactly as written, and its size is reported
+# (roadmap R-139). Exits 0 when the store behaves so, 1 when it does not.
+set -u
+r=conformance/stores/request
+b=/$STORE_BUCKET
+printf 'written exactly' > "$WORK/object"
+[ "$("$r" PUT "$b/read-back" --data-binary @"$WORK/object")" = 200 ] || { echo "the write was refused"; exit 1; }
+if ! { [ "$("$r" GET "$b/read-back")" = 200 ] && cmp -s "$WORK/body" "$WORK/object"; }; then
+    echo "it did not read back exactly"; exit 1
+fi
+if ! { [ "$("$r" HEAD "$b/read-back" -I)" = 200 ] && grep -q -x 'content-length: 15' "$WORK/headers"; }; then
+    echo "its size was not reported"; exit 1
+fi
