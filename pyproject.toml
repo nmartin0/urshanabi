@@ -1,0 +1,41 @@
+# The agent and pipeline language's one dependency set (RULES.md E2) and
+# the policy of each of its gates, declared once here (E3). Its
+# interpreter is pinned in script/interpreter.lock; its tools are locked
+# with hashes in pylock.toml.
+[project]
+name = "urshanabi"
+version = "0.0.0"
+description = "Urshanabi's components in the agent and pipeline language"
+requires-python = "==3.14.*"
+
+[dependency-groups]
+tools = [
+    "black==26.5.1",
+    "pylint==4.0.8",
+    "mypy==2.3.1",
+    "pip-audit==2.10.1",
+]
+
+[tool.black]
+line-length = 88
+
+[tool.pylint.main]
+recursive = true
+jobs = 0
+
+[tool.pylint."messages control"]
+# Every message is an error: warnings are not advice (RULES.md E3). One
+# message is switched off here, for the whole workspace rather than
+# scattered through files: a value carrying data with one method is what
+# a small value type is.
+disable = ["too-few-public-methods"]
+
+[tool.pylint.basic]
+# A property's file is named after the property it checks, such as
+# HDR-01, not in this language's usual style.
+module-naming-style = "any"
+
+[tool.mypy]
+strict = true
+warn_unreachable = true
+disallow_any_explicit = true

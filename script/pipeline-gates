@@ -1,0 +1,32 @@
+#!/bin/sh
+# script/pipeline-gates DIR: the agent and pipeline language's gates for
+# the component in DIR (RULES.md E3), shared so every component runs the
+# same ones: formatting; the linter with every message an error; types at
+# their strictest; tests under UTC, a zone behind it and a zone observing
+# daylight saving (roadmap R-14); and the audit of the locked tools for
+# known vulnerabilities. Each gate's policy lives in pyproject.toml.
+set -u
+dir=${1:-}
+[ -n "$dir" ] || { echo "usage: script/pipeline-gates DIR" >&2; exit 2; }
+cd "$(dirname "$0")/.." || exit 1
+interpreter=$(script/pipeline-toolchain) || exit 1
+tools=$PWD/.tools/opt/pipeline-tools/bin
+name=${dir##*/}
+failed=""
+run() {  # run GATE COMMAND...
+    gate=$1; shift
+    echo "$name: $gate"
+    "$@" || failed="$failed $gate"
+}
+run formatting "$tools/black" --check --quiet "$dir"  # name-ok
+run lint "$tools/pylint" "$dir"  # name-ok
+run types "$tools/mypy" "$dir"  # name-ok
+for zone in UTC America/Sao_Paulo America/New_York; do
+    run "tests-$zone" env TZ="$zone" PYTHONPATH="$PWD/$dir" "$interpreter" -m unittest discover -s "$dir" -t "$dir" -q  # name-ok
+done
+run audit "$tools/pip-audit" --strict  # name-ok
+if [ -n "$failed" ]; then
+    echo "$name: FAILED:$failed"
+    exit 1
+fi
+echo "$name: every gate passed."

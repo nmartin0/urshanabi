@@ -182,13 +182,11 @@ any commercial system needs, whatever its category.
 - **Class:** foundation
 - **Status:** in progress — the suite runs black-box against the
   stack's container images through a driver, discovering each property;
-  HDR-01, HDR-02 and HDR-04 hold, each seen to fail first — the first
-  two against the gateway before its headers existed, the third on a
-  planted route — and HDR-03 is reported pending until configuration
-  generations exist (`conformance/script/test-integration`,
-  `conformance/properties/HDR-01`); remaining: every other property,
-  test-first as its feature arrives, and the suite's long-term language,
-  for the owner.
+  HDR-01, HDR-02 and HDR-04 hold and HDR-03 is pending, now written in
+  the agent and pipeline language, each seen to fail on a planted fault
+  in the gateway (`conformance/properties/HDR-01.py`,
+  `conformance/support.py`); remaining: every other property, test-first
+  as its feature arrives.
 - **Outcome:** `conformance/BEHAVIOURS.md` implemented as black-box
   property tests against Urshanabi, through a thin driver that
   translates each property into Urshanabi's own interface. The suite is
@@ -196,12 +194,13 @@ any commercial system needs, whatever its category.
   meets it, starting with the walking skeleton. Elysium is the evidence
   that each property is achievable and testable, not a target, so no
   driver is written for it.
-- **Decision:** the suite is built against Urshanabi only (owner,
-  2026-09-21). A driver for Elysium would be throwaway work against a
-  prototype interface Urshanabi deliberately does not keep, would fail
-  in its known flaws and need each recorded as a divergence, and would
-  risk shaping the tests around Elysium's shapes. Each test is proved
-  instead by a planted fault in a test build of Urshanabi.
+- **Decision:** the behaviour properties are written in the agent and
+  pipeline language (owner, 2026-09-22): they must read like evidence,
+  and shell cannot carry properties about logins, permissions or search.
+  The infrastructure checks — object storage and the table catalog —
+  stay in shell, where signed requests are natural and the checks
+  already hold. Properties reach Urshanabi only through the driver, over
+  its public interface, as a customer's client would.
 - **Done when:** every property passes against Urshanabi, and for each
   property a test build with a planted fault — such as one
   uniform-denial response flipped — fails the suite.
@@ -245,11 +244,14 @@ any commercial system needs, whatever its category.
 
 - **Class:** foundation
 - **Status:** in progress — tools are pinned and checksum-verified;
-  the systems-language workspace builds only from its lockfile, and the
-  services-language gates refuse a module that differs from its recorded
-  hash or an untidy manifest (`script/tools.lock`, `Cargo.lock`,
-  `script/services-gates`); remaining: the other two languages'
-  lockfiles.
+  the systems-language workspace builds only from its lockfile; the
+  services language refuses a module that differs from its recorded hash
+  or an untidy manifest; and the agent and pipeline language's
+  interpreter is pinned by version and source checksum, built from the
+  foundation's own source, with its tools locked by hash in the
+  standardised lockfile (`script/tools.lock`, `Cargo.lock`,
+  `script/services-gates`, `script/interpreter.lock`, `pylock.toml`);
+  remaining: the frontend language's lockfile.
 - **Outcome:** every language role installs from a hashed lockfile; CI
   fails when a lockfile drifts from its manifest.
 - **Learned from Elysium:** dependencies were bounded rather than
@@ -372,11 +374,12 @@ any commercial system needs, whatever its category.
 ### R-14 Tests prove no code depends on the host's timezone
 
 - **Class:** foundation
-- **Status:** in progress — the systems and services languages' tests
-  run under UTC, São Paulo and New York, and self-tests prove a
-  deliberate local-time read fails in both non-UTC zones only, in each
-  (`script/systems-gates`, `script/services-gates`,
-  `script/check-scripts`); remaining: the other two languages.
+- **Status:** in progress — the systems, services and
+  agent-and-pipeline languages' tests run under UTC, São Paulo and New
+  York, and self-tests prove a deliberate local-time read fails in both
+  non-UTC zones only, in each (`script/systems-gates`,
+  `script/services-gates`, `script/pipeline-gates`,
+  `script/check-scripts`); remaining: the frontend language.
 - **Outcome:** date-sensitive tests run three times: under UTC, under
   a zone behind UTC, and under a zone observing daylight saving. The
   zone is set by the test scripts themselves, so a local run and CI run
@@ -757,13 +760,14 @@ any commercial system needs, whatever its category.
 
 - **Class:** foundation
 - **Status:** in progress — repository gates, boundaries and the
-  scripts' own tests run in CI, and the systems and services languages'
-  gates run on their first components, each broken on purpose by a
-  self-test; the services language now also refuses unreachable
-  functions and known vulnerabilities in code the program calls
-  (`script/check-scripts`, `script/systems-gates`,
-  `script/services-gates`); remaining: the other two languages' gates, a
-  licence gate for the services language, and the dependency-rung check.
+  scripts' own tests run in CI, and the systems, services and
+  agent-and-pipeline languages' gates run on their components, each
+  broken on purpose by a self-test (`script/check-scripts`,
+  `script/pipeline-gates`); remaining: the frontend language's gates; a
+  licence gate for the services language; dead code in the agent and
+  pipeline language beyond unused imports and variables; a self-test for
+  that language's audit gate, which needs a package with a known
+  advisory; and the dependency-rung check.
 - **Outcome:** `RULES.md` part three is enforced in CI from the first
   commit: every dependency records its rung on the standard-library
   ladder (E1); every component is its own project, with dependencies

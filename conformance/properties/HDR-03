@@ -1,7 +1,0 @@
-#!/bin/sh
-# conformance/properties/HDR-03: every response names the configuration generation that answered it
-# (conformance/BEHAVIOURS.md). Exits 0 when it holds, 1 when it does
-# not, 2 when Urshanabi cannot yet be held to it.
-set -u
-echo "configuration generations arrive with the control plane (R-51)"
-exit 2

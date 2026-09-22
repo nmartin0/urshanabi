@@ -1,0 +1,78 @@
+#!/bin/sh
+# script/pipeline-toolchain: make the agent and pipeline language's
+# interpreter available at the version script/interpreter.lock pins, and
+# print its path. An interpreter already on this machine is used only if
+# its version matches exactly; otherwise the foundation's source archive
+# is downloaded, checked against its SHA-256 and built into
+# .tools/opt/interpreter. The standard library is verified afterwards,
+# because a missing development package silently omits modules.
+set -u
+cd "$(dirname "$0")/.." || exit 1
+pin=$(grep -v '^#' script/interpreter.lock | grep -v '^$' | head -1)
+version=$(echo "$pin" | cut -d ' ' -f 1)
+sum=$(echo "$pin" | cut -d ' ' -f 2)
+url=$(echo "$pin" | cut -d ' ' -f 3)
+built=.tools/opt/interpreter/bin/python3  # name-ok
+
+# exact CANDIDATE: true when that interpreter is the pinned version.
+exact() {
+    [ -x "$1" ] && [ "$("$1" -c 'import platform; print(platform.python_version())' 2>/dev/null)" = "$version" ]  # name-ok
+}
+
+# has_modules CANDIDATE: true when its standard library has every module
+# the components need; a missing development package omits some.
+has_modules() {
+    "$1" - >/dev/null 2>&1 <<'CHECK'
+import importlib.util, sys
+need = ["ssl", "zlib", "bz2", "lzma", "sqlite3", "ctypes", "hashlib",  # name-ok
+        "decimal", "uuid", "venv", "unittest", "json", "http.client", "tomllib"]
+sys.exit(1 if [m for m in need if importlib.util.find_spec(m) is None] else 0)
+CHECK
+}
+
+# tools_ready INTERPRETER: install the gates' tools from pylock.toml,
+# hashes and all, unless they are already installed from that same
+# lockfile.
+tools_ready() {
+    stamp=.tools/opt/pipeline-tools/.lockfile
+    if command -v sha256sum >/dev/null 2>&1; then now=$(sha256sum pylock.toml | cut -d ' ' -f 1)
+    else now=$(shasum -a 256 pylock.toml | cut -d ' ' -f 1); fi
+    [ "$(cat "$stamp" 2>/dev/null)" = "$now" ] && return 0
+    echo "installing the gates' tools from pylock.toml" >&2
+    rm -rf .tools/opt/pipeline-tools
+    "$1" -m venv .tools/opt/pipeline-tools > /dev/null 2>&1 || return 1
+    .tools/opt/pipeline-tools/bin/pip install -q -r pylock.toml > .tools/opt/pipeline-tools.log 2>&1 ||  # name-ok
+        { echo "FAIL: the gates' tools did not install; see .tools/opt/pipeline-tools.log" >&2; return 1; }
+    printf '%s\n' "$now" > "$stamp"
+}
+
+for candidate in "$built" "$(command -v python3.14 2>/dev/null)" "$(command -v python3 2>/dev/null)"; do  # name-ok
+    [ -n "$candidate" ] || continue
+    if exact "$candidate" && has_modules "$candidate"; then
+        tools_ready "$candidate" || exit 1
+        echo "$(cd "$(dirname "$candidate")" && pwd)/$(basename "$candidate")"
+        exit 0
+    fi
+done
+
+echo "building the interpreter, version $version; this takes a few minutes once" >&2
+mkdir -p .tools/download .tools/opt || exit 1
+archive=.tools/download/interpreter.tar.gz
+fetch() { curl -sfL --proto '=https,file' --proto-redir '=https' --tlsv1.2 -o "$1" "$2"; }  # name-ok
+fetch "$archive" "$url" || { echo "FAIL: cannot download the interpreter's source" >&2; exit 1; }
+if command -v sha256sum >/dev/null 2>&1; then got=$(sha256sum "$archive" | cut -d ' ' -f 1)
+else got=$(shasum -a 256 "$archive" | cut -d ' ' -f 1); fi
+[ "$got" = "$sum" ] || { echo "FAIL: the interpreter's source does not match its checksum" >&2; rm -f "$archive"; exit 1; }
+source_dir=$(mktemp -d) || exit 1
+tar -xzf "$archive" -C "$source_dir" --strip-components=1 || exit 1
+rm -f "$archive"
+prefix=$(pwd)/.tools/opt/interpreter
+rm -rf "$prefix"
+cores=$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 2)
+(cd "$source_dir" && ./configure --prefix="$prefix" --with-ensurepip=install --disable-test-modules && make -j"$cores" && make install) > .tools/opt/interpreter-build.log 2>&1 ||
+    { echo "FAIL: the interpreter did not build; see .tools/opt/interpreter-build.log" >&2; rm -rf "$source_dir"; exit 1; }
+rm -rf "$source_dir"
+exact "$built" || { echo "FAIL: the built interpreter is not version $version" >&2; exit 1; }
+has_modules "$built" || { echo "FAIL: the built interpreter lacks standard-library modules; install the development packages for TLS, compression, archives and the embedded database, then build again" >&2; exit 1; }
+tools_ready "$built" || exit 1
+echo "$(pwd)/$built"

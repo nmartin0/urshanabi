@@ -1,3 +1,5 @@
 /.tools/
 /target/
 /services/gateway/internal/gen/
+__pycache__/
+.mypy_cache/

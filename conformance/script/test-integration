@@ -12,7 +12,9 @@ WORK=$(mktemp -d) || exit 1
 STACK="conformance-$$"
 PORT=$((30000 + $$ % 20000))
 DRIVER="$PWD/conformance/drivers/urshanabi"
-export PATH WORK STACK PORT DRIVER
+INTERPRETER=$(script/pipeline-toolchain) || exit 1
+PYTHONPATH="$PWD/conformance"  # name-ok
+export PATH WORK STACK PORT DRIVER PYTHONPATH  # name-ok
 STORE_PORT=$((PORT + 100))
 CATALOG_PORT=$((PORT + 200))
 export STORE_PORT CATALOG_PORT
@@ -22,10 +24,13 @@ trap '"$DRIVER" stop; stop_stores; rm -rf "$WORK"' EXIT
 
 found=0; passed=0; pending=0; failed=""
 for p in conformance/properties/*; do
-    [ -x "$p" ] || continue
+    case "$p" in
+        *.py) set -- "$INTERPRETER" "$p" ;;
+        *) [ -x "$p" ] || continue; set -- "$p" ;;
+    esac
     found=$((found + 1))
-    id=${p##*/}
-    out=$("$p"); rc=$?
+    id=${p##*/}; id=${id%.py}
+    out=$("$@"); rc=$?
     case $rc in
         0) passed=$((passed + 1)); echo "  pass     $id" ;;
         2) pending=$((pending + 1)); echo "  pending  $id: $out" ;;

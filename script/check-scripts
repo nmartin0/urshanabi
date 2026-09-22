@@ -624,6 +624,72 @@ expect_msg fail "a generator writing an unignored file fails" "services/x/made/"
 generated e3 gen; printf '/services/x/gen/\n' > "$t/.gitignore"
 expect_msg fail "an unignored build directory fails" "target, is not ignored" "$t/script/check-generated"
 
+
+# --- the agent and pipeline language's gates (R-127) ------------------
+# The real component script, run against a small component whose tools
+# and interpreter are the ones this repository already built.
+pipemod() {  # pipemod NAME: a component in that language, with its gates
+    tree "$1" pipeline-gates pipeline-toolchain
+    mkdir -p "$t/.tools/opt" "$t/thing/tests" "$t/thing/script"
+    for kit in interpreter pipeline-tools; do ln -s "$repo/.tools/opt/$kit" "$t/.tools/opt/$kit"; done
+    cp "$repo/pyproject.toml" "$repo/pylock.toml" "$repo/script/interpreter.lock" "$t/" 2>/dev/null
+    cp "$repo/script/interpreter.lock" "$t/script/" || exit 1
+    cat > "$t/thing/script/test" <<'COMPONENT'
+#!/bin/sh
+set -u
+cd "$(dirname "$0")/../.." || exit 1
+exec script/pipeline-gates thing
+COMPONENT
+    chmod +x "$t/thing/script/test"
+    printf '"""A fixture."""\n\n\ndef double(number: int) -> int:\n    """Double a number."""\n    return number * 2\n' > "$t/thing/work.py"
+    printf '"""Its tests."""\n' > "$t/thing/tests/__init__.py"
+    printf '"""The fixture works."""\n\nimport unittest\n\nimport work\n\n\nclass WorkTest(unittest.TestCase):\n    """Doubling."""\n\n    def test_doubles(self) -> None:\n        """Two doubled is four."""\n        self.assertEqual(work.double(2), 4)\n' > "$t/thing/tests/test_work.py"
+}
+pipemod p1
+expect pass "a clean component passes every gate of that language" "$t/thing/script/test"
+pipemod p2; plant 's/    return number \* 2/    return number*2/' thing/work.py
+expect_msg fail "badly formatted code fails the formatting gate" "FAILED: formatting" "$t/thing/script/test"
+pipemod p3
+cat > "$t/thing/work.py" <<'UNUSED'
+"""A fixture."""
+
+import json
+
+
+def double(number: int) -> int:
+    """Double a number."""
+    return number * 2
+UNUSED
+expect_msg fail "an unused import fails the lint gate" "FAILED: lint" "$t/thing/script/test"
+pipemod p4
+cat >> "$t/thing/work.py" <<'WRONGTYPE'
+
+
+def wrong(number: int) -> str:
+    """Return the wrong type."""
+    return number
+WRONGTYPE
+expect_msg fail "a wrong type fails the types gate" "FAILED: types" "$t/thing/script/test"
+pipemod p5; plant 's/work.double(2), 4/work.double(2), 5/' thing/tests/test_work.py
+expect_msg fail "a failing test fails the tests gate" "FAILED: tests-UTC" "$t/thing/script/test"
+pipemod p6
+cat > "$t/thing/tests/test_zone.py" <<'LOCALTIME'
+"""A local-time read."""
+
+import datetime
+import unittest
+
+
+class ZoneTest(unittest.TestCase):
+    """Assumes the host keeps UTC."""
+
+    def test_assumes_utc(self) -> None:
+        """The host is in UTC."""
+        offset = datetime.datetime.now().astimezone().utcoffset()
+        self.assertEqual(offset, datetime.timedelta(0))
+LOCALTIME
+expect_msg fail "a local-time read fails under both non-UTC zones, and only them" "FAILED: tests-America/Sao_Paulo tests-America/New_York$" "$t/thing/script/test"
+
 # Guard: a self-test whose helper is missing or misspelled fails with
 # "not found" and records nothing. Count the calls written in this file
 # and require that every one ran.

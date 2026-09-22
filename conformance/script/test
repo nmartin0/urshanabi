@@ -1,4 +1,7 @@
 #!/bin/sh
-# conformance/script/test: the suite checks a running system, so it runs
-# under script/test-integration only.
-echo "conformance: no unit tests; the suite runs under script/test-integration."
+# conformance/script/test: the suite's own gates. The properties check a
+# running system, so they run under script/test-integration; what runs
+# here is this language's gates over the suite's code.
+set -u
+cd "$(dirname "$0")/../.." || exit 1
+exec script/pipeline-gates conformance

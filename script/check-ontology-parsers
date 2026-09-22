@@ -17,7 +17,7 @@ BEGIN {
     while ((getline l < listfile) > 0) if (l != "" && l !~ /^#/) pat[++n] = l
     while ((getline path < filelist) > 0) {
         if (path ~ /^libs\/ontology\// || path ~ /\.md$/) continue
-        if (path ~ /(^|\/)(Cargo\.lock|go\.sum|package-lock\.json|uv\.lock)$/) continue  # name-ok
+        if (path ~ /(^|\/)(Cargo\.lock|go\.sum|package-lock\.json|uv\.lock|pylock\.toml)$/) continue  # name-ok
         if (path == "Cargo.toml" || path ~ /^script\//) continue
         checked++
         ln = 0

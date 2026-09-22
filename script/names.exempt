@@ -12,3 +12,7 @@ libs/ontology/Cargo.toml
 script/ontology-parsers.list
 go.mod
 go.sum
+script/interpreter.lock
+pyproject.toml
+pylock.toml
+.gitignore

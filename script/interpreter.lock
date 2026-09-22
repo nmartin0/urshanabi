@@ -1,0 +1,5 @@
+# The agent and pipeline language's interpreter (roadmap R-10): the exact
+# version every machine uses, and the foundation's own source archive it
+# is built from, with its SHA-256. An interpreter already installed is
+# used only when its version matches exactly.
+3.14.7 23794c71dc5aa636ef2f6774270c3d48f755afaaa474fd3e0d49de8292b69dbb https://github.com/python/cpython/archive/refs/tags/v3.14.7.tar.gz

@@ -8,6 +8,7 @@
 #                         between the replicas (R-18); the status, the
 #                         lower-cased headers and the body land in $WORK
 #   has HEADER VALUE      the last response carries exactly that header
+#   base                  the next replica's address, alternating too
 #   routes                one route that answers and two the router
 #                         refuses, as METHOD:PATH
 #   answered REPLICA      how many builds requests that replica's gateway
@@ -33,10 +34,16 @@ case "${1:-}" in
         tr -d '\r' < "$WORK/raw" | tr '[:upper:]' '[:lower:]' > "$WORK/headers" ;;
     has)
         grep -q -x -F "$2: $3" "$WORK/headers" ;;
+    base)
+        # The next replica's address, alternating as "request" does.
+        n=$(( $(cat "$WORK/requests" 2>/dev/null || echo 0) + 1 ))
+        echo "$n" > "$WORK/requests"
+        at=$PORT; [ $((n % 2)) -eq 0 ] && at=$((PORT + 10))
+        echo "http://127.0.0.1:$at" ;;
     routes)
         echo "GET:/v1/builds GET:/no-such-route POST:/v1/builds" ;;
     answered)
         podman logs "$STACK-$2-gateway" 2>&1 | grep -c '"msg":"GetBuildInfo"' ;;  # name-ok
     *)
-        echo "usage: conformance/drivers/urshanabi start|stop|request|has|routes|answered" >&2; exit 2 ;;
+        echo "usage: conformance/drivers/urshanabi start|stop|request|has|base|routes|answered" >&2; exit 2 ;;
 esac

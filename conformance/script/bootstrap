@@ -1,9 +1,11 @@
 #!/bin/sh
 # conformance/script/bootstrap: the suite runs the stack from its images,
-# as the end-to-end journeys do, and the table catalog on its runtime.
+# as the end-to-end journeys do, the table catalog on its runtime, and
+# its own properties on the agent and pipeline language's interpreter.
 set -u
 cd "$(dirname "$0")/../.." || exit 1
 e2e/script/bootstrap || exit 1
+script/pipeline-toolchain > /dev/null || exit 1
 # The catalog's checks need its runtime, version 21 or newer.
 conformance/catalogs/runtime > /dev/null || exit 1
 echo "conformance: the catalog's runtime is present."
