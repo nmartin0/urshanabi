@@ -1,0 +1,45 @@
+#!/bin/sh
+# script/check-rungs: every direct dependency records its rung on the
+# standard-library ladder (RULES.md E1, roadmap R-127). The rung is
+# written beside the dependency in its own manifest, the one place a
+# library may be named (H1):
+#   rung 1  the language's standard library or official toolchain
+#   rung 2  the canonical third-party library
+#   rung 3  a compared choice, citing the roadmap item that records it
+# Transitive dependencies carry no rung: nobody chose them.
+set -u
+cd "$(dirname "$0")/.." || exit 1
+
+awk '
+function complain(where, what) { printf "RUNG %s: %s\n", where, what; bad = 1 }
+function rung(line, where,   value) {
+    if (line !~ /rung [123]/) { complain(where, "records no rung (E1)"); return }
+    if (line ~ /rung 3/ && line !~ /R-[0-9]+/) {
+        complain(where, "is rung 3 but cites no roadmap item recording the comparison")
+    }
+    counted++
+}
+# The systems language: every entry of the shared dependency set.
+FILENAME == "Cargo.toml" && /^\[workspace.dependencies\]/ { in_deps = 1; next }
+FILENAME == "Cargo.toml" && /^\[/ { in_deps = 0 }
+FILENAME == "Cargo.toml" && in_deps && /^[a-zA-Z]/ {
+    split($0, f, " "); rung($0, "Cargo.toml: " f[1])
+}
+# The services language: required modules that are not transitive.
+FILENAME == "go.mod" && /^require \(/ { in_req = 1; next }  # name-ok
+FILENAME == "go.mod" && /^\)/ { in_req = 0 }  # name-ok
+FILENAME == "go.mod" && in_req && /^[ \t]*[a-z]/ && !/\/\/ indirect/ {  # name-ok
+    split($0, f, " "); rung($0, "go.mod: " f[1])  # name-ok
+}
+# The agent and pipeline language: every declared tool and dependency.
+FILENAME == "pyproject.toml" && /^(tools|dependencies) = \[/ { in_list = 1; next }
+FILENAME == "pyproject.toml" && /^\]/ { in_list = 0 }
+FILENAME == "pyproject.toml" && in_list && /"/ {
+    split($0, f, "\""); name = f[2]; sub(/[=<>~!].*/, "", name)
+    rung($0, "pyproject.toml: " name)
+}
+END {
+    if (counted == 0) { print "FAIL: no dependencies found to check"; exit 1 }
+    if (bad) exit 1
+    printf "check-rungs: %d direct dependencies, each recording its rung.\n", counted
+}' Cargo.toml go.mod pyproject.toml  # name-ok

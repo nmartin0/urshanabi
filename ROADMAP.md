@@ -760,14 +760,15 @@ any commercial system needs, whatever its category.
 
 - **Class:** foundation
 - **Status:** in progress — repository gates, boundaries and the
-  scripts' own tests run in CI, and the systems, services and
+  scripts' own tests run in CI; the systems, services and
   agent-and-pipeline languages' gates run on their components, each
-  broken on purpose by a self-test (`script/check-scripts`,
-  `script/pipeline-gates`); remaining: the frontend language's gates; a
-  licence gate for the services language; dead code in the agent and
-  pipeline language beyond unused imports and variables; a self-test for
-  that language's audit gate, which needs a package with a known
-  advisory; and the dependency-rung check.
+  broken on purpose by a self-test; and every direct dependency records
+  its rung on the ladder, beside itself in its own manifest
+  (`script/check-scripts`, `script/check-rungs`); remaining: the
+  frontend language's gates, a licence gate for the services language,
+  dead code in the agent and pipeline language beyond unused imports and
+  variables, and a self-test for that language's audit gate, which needs
+  a package with a known advisory.
 - **Outcome:** `RULES.md` part three is enforced in CI from the first
   commit: every dependency records its rung on the standard-library
   ladder (E1); every component is its own project, with dependencies

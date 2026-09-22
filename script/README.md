@@ -46,6 +46,8 @@ Repository checks, each runnable on its own:
   definitions (R-51).
 - `check-generated` — every generator runs and leaves version control
   seeing no change (R-11).
+- `check-rungs` — every direct dependency records its rung on the
+  standard-library ladder, beside itself in its manifest (E1, R-127).
 - `check-scripts` — the scripts' own tests: every gate is broken on
   purpose and must fail (R-127).
 

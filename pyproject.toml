@@ -10,10 +10,10 @@ requires-python = "==3.14.*"
 
 [dependency-groups]
 tools = [
-    "black==26.5.1",
-    "pylint==4.0.8",
-    "mypy==2.3.1",
-    "pip-audit==2.10.1",
+    "black==26.5.1",  # rung 2: the foundation's formatter (R-127)
+    "pylint==4.0.8",  # rung 2: the community organisation's linter (R-127)
+    "mypy==2.3.1",  # rung 2: the reference type checker (R-127)
+    "pip-audit==2.10.1",  # rung 2: the packaging authority's auditor (R-127)
 ]
 
 [tool.black]

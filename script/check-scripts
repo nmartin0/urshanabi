@@ -690,6 +690,30 @@ class ZoneTest(unittest.TestCase):
 LOCALTIME
 expect_msg fail "a local-time read fails under both non-UTC zones, and only them" "FAILED: tests-America/Sao_Paulo tests-America/New_York$" "$t/thing/script/test"
 
+
+# --- check-rungs: every direct dependency records its rung (E1) -------
+manifests() {  # manifests NAME A B C: one dependency line per language
+    tree "$1" check-rungs
+    printf '[workspace.dependencies]\n%s\n' "$2" > "$t/Cargo.toml"  # name-ok
+    printf 'module urshanabi\n\ngo 1.27\n\nrequire (\n%s\n\tgolang.org/x/sys v0.1.0 // indirect\n)\n' "$3" > "$t/go.mod"  # name-ok
+    printf '[dependency-groups]\ntools = [\n%s\n]\n' "$4" > "$t/pyproject.toml"  # name-ok
+}
+good_systems='thing = "1.0"  # rung 2: the canonical thing'
+good_services='	example.com/thing v1.0.0 // rung 2: the canonical thing'
+good_pipeline='    "thing==1.0",  # rung 2: the canonical thing'
+manifests u1 "$good_systems" "$good_services" "$good_pipeline"
+expect pass "dependencies recording their rungs pass" "$t/script/check-rungs"
+manifests u2 'thing = "1.0"' "$good_services" "$good_pipeline"
+expect_msg fail "a dependency without a rung fails" "Cargo.toml: thing: records no rung" "$t/script/check-rungs"  # name-ok
+manifests u3 "$good_systems" '	example.com/thing v1.0.0' "$good_pipeline"
+expect_msg fail "a module without a rung fails" "go.mod: example.com/thing: records no rung" "$t/script/check-rungs"  # name-ok
+manifests u4 "$good_systems" "$good_services" '    "thing==1.0",'
+expect_msg fail "a tool without a rung fails" "pyproject.toml: thing: records no rung" "$t/script/check-rungs"  # name-ok
+manifests u5 'thing = "1.0"  # rung 3: chosen after comparing' "$good_services" "$good_pipeline"
+expect_msg fail "a compared choice citing no roadmap item fails" "cites no roadmap item" "$t/script/check-rungs"
+manifests u6 'thing = "1.0"  # rung 4: made up' "$good_services" "$good_pipeline"
+expect_msg fail "an unknown rung fails" "records no rung" "$t/script/check-rungs"
+
 # Guard: a self-test whose helper is missing or misspelled fails with
 # "not found" and records nothing. Count the calls written in this file
 # and require that every one ran.

@@ -12,16 +12,16 @@ rust-version = "1.91"
 publish = false
 
 [workspace.dependencies]
-prost = "0.14.4"
-serde = { version = "1.0.229", features = ["derive"] }
-toml = "1.1.6"
-prost-types = "0.14.4"
-tonic = "0.14.6"
-tonic-prost = "0.14.6"
-tonic-prost-build = "0.14.6"
-tokio = { version = "1.53.1", features = ["macros", "rt-multi-thread", "net", "signal", "time"] }
-tracing = "0.1.44"
-tracing-subscriber = { version = "0.3.23", default-features = false, features = ["fmt", "std"] }
+prost = "0.14.4"  # rung 3: the contract language's chosen implementation (R-06)
+serde = { version = "1.0.229", features = ["derive"] }  # rung 2: the canonical serialisation framework
+toml = "1.1.6"  # rung 2: the canonical parser of the ontology's format (R-51)
+prost-types = "0.14.4"  # rung 3: with prost (R-06)
+tonic = "0.14.6"  # rung 3: the chosen RPC implementation (R-06)
+tonic-prost = "0.14.6"  # rung 3: with tonic (R-06)
+tonic-prost-build = "0.14.6"  # rung 3: with tonic (R-06)
+tokio = { version = "1.53.1", features = ["macros", "rt-multi-thread", "net", "signal", "time"] }  # rung 2: the canonical asynchronous runtime
+tracing = "0.1.44"  # rung 2: the canonical logging façade
+tracing-subscriber = { version = "0.3.23", default-features = false, features = ["fmt", "std"] }  # rung 2: with tracing
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

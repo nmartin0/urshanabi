@@ -12,8 +12,8 @@ tool (
 )
 
 require (
-	google.golang.org/grpc v1.84.0
-	google.golang.org/protobuf v1.36.12
+	google.golang.org/grpc v1.84.0 // rung 3: the chosen RPC implementation (R-06)
+	google.golang.org/protobuf v1.36.12 // rung 3: the contract language's implementation (R-06)
 )
 
 require (
