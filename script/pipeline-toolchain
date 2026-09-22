@@ -30,6 +30,16 @@ sys.exit(1 if [m for m in need if importlib.util.find_spec(m) is None] else 0)
 CHECK
 }
 
+# tools_present: every tool pyproject.toml names is installed. A kept
+# .tools, from a cache or an interrupted run, may hold less than its
+# stamp claims.
+tools_present() {
+    sed -n '/^tools = \[/,/^]/p' pyproject.toml | sed -n 's/.*"\([a-z-]*\)==.*/\1/p' |
+        while read -r tool; do
+            [ -x ".tools/opt/pipeline-tools/bin/$tool" ] || exit 1
+        done
+}
+
 # tools_ready INTERPRETER: install the gates' tools from pylock.toml,
 # hashes and all, unless they are already installed from that same
 # lockfile.
@@ -37,7 +47,7 @@ tools_ready() {
     stamp=.tools/opt/pipeline-tools/.lockfile
     if command -v sha256sum >/dev/null 2>&1; then now=$(sha256sum pylock.toml | cut -d ' ' -f 1)
     else now=$(shasum -a 256 pylock.toml | cut -d ' ' -f 1); fi
-    [ "$(cat "$stamp" 2>/dev/null)" = "$now" ] && return 0
+    if [ "$(cat "$stamp" 2>/dev/null)" = "$now" ] && tools_present; then return 0; fi
     echo "installing the gates' tools from pylock.toml" >&2
     rm -rf .tools/opt/pipeline-tools
     "$1" -m venv .tools/opt/pipeline-tools > /dev/null 2>&1 || return 1

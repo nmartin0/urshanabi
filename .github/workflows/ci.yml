@@ -17,7 +17,7 @@ jobs:
   cibuild:
     name: script/cibuild
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 30
     permissions:
       contents: read
     steps:
@@ -25,6 +25,13 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 0
+      # The pinned tools, the interpreter built from source and the locked
+      # tool set, kept between runs: any change to a lock file makes a new
+      # key, so a cache can never hold a version the locks no longer name.
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .tools
+          key: tools-${{ runner.os }}-${{ hashFiles('script/tools.lock', 'script/interpreter.lock', 'pylock.toml') }}
       - name: script/cibuild
         run: script/cibuild
         env:
