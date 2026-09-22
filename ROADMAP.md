@@ -130,9 +130,11 @@ any commercial system needs, whatever its category.
 ### R-06 Service contracts with breaking-change detection
 
 - **Class:** foundation
-- **Status:** in progress — breaking changes fail CI
-  (`contracts/script/test`); remaining: a test that fails when an unsafe
-  error argument is logged, with the first service's logger; and a
+- **Status:** in progress — breaking changes fail CI, and a test fails
+  if the gateway logs an unsafe error argument or a producer's free-text
+  message; each was seen to fail on a planted leak
+  (`contracts/script/test`,
+  `services/gateway/internal/failure/failure_test.go`); remaining: a
   decimal type that crosses every contract exactly, never as a
   floating-point number, which the ontology's decimal properties
   require.

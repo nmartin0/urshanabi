@@ -19,7 +19,7 @@ SP 800-53 references for implemented controls follow the mapping published in SP
 | UC-07 | Every gate is itself tested, and every fault found becomes a permanent self-test | SP800-53: SA-11, SA-15; SP800-218: RV.3.2, RV.3.4 | R-127 | implemented | `script/check-scripts` |
 | UC-08 | Security decisions and requirements are tracked, and no document can cite one that does not exist | SP800-53: SA-8, SA-10, SA-17; SP800-218: PW.1.2 | R-15 | implemented | `script/check-docs`; self-test "a missing roadmap item fails" |
 | UC-09 | This matrix: every implemented control proves itself with evidence | SP800-53: SA-15(1); SP800-218: PO.4.1 | R-125 | implemented | `script/check-compliance`; self-test "an implemented control without evidence fails" |
-| UC-10 | Errors reveal only what is safe; arguments that may carry data are never logged | SP800-53: SI-11; SP800-218: PW.5.1 | R-06, R-67 | planned | — |
+| UC-10 | Errors reveal only what is safe; arguments that may carry data are never logged | SP800-53: SI-11; SP800-218: PW.5.1 | R-06, R-67 | implemented | `services/gateway/script/test` |
 | UC-11 | Every timestamp is UTC, and no code reads the host's timezone | SP800-53: AU-8; 45CFR: 164.312(b) | R-14, R-128 | planned | — |
 | UC-12 | Every person and every service has a unique identity, and reaches only what it has been granted | SP800-53: AC-3, AC-6, IA-2; 45CFR: 164.312(a)(1), 164.312(a)(2)(i) | R-44, R-68, R-81 | planned | — |
 | UC-13 | Multi-factor authentication for every account that can reach regulated data | SP800-53: IA-2(1), IA-2(2); 45CFR: 164.312(d) | R-49 | planned | — |

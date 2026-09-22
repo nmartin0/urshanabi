@@ -12,6 +12,7 @@ import (
 	wire "google.golang.org/protobuf/encoding/protojson" // name-ok
 	"google.golang.org/protobuf/types/known/timestamppb" // name-ok
 
+	"urshanabi/services/gateway/internal/failure"
 	buildv1 "urshanabi/services/gateway/internal/gen/urshanabi/build/v1"
 	"urshanabi/services/gateway/internal/identity"
 	"urshanabi/services/gateway/internal/requestid"
@@ -59,7 +60,7 @@ func (s *Server) builds(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		// The caller learns only that a service is unavailable, never why:
 		// error text can reveal internals (SP 800-53 SI-11).
-		s.log.Error("GetBuildInfo failed", "request_id", id, "error", err)
+		s.log.Error("GetBuildInfo failed", append([]any{"request_id", id}, failure.Attrs(err)...)...)
 		writeJSON(w, http.StatusBadGateway, []byte(`{"error":"a required service is unavailable","request_id":"`+id+`"}`))
 		return
 	}

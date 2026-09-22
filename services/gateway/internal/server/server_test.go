@@ -14,10 +14,13 @@ import (
 	"time"
 
 	rpc "google.golang.org/grpc"                  // name-ok
+	"google.golang.org/grpc/codes"                // name-ok
 	"google.golang.org/grpc/credentials/insecure" // name-ok
 	"google.golang.org/grpc/metadata"             // name-ok
+	"google.golang.org/grpc/status"               // name-ok
 
 	buildv1 "urshanabi/services/gateway/internal/gen/urshanabi/build/v1"
+	commonv1 "urshanabi/services/gateway/internal/gen/urshanabi/common/v1"
 	"urshanabi/services/gateway/internal/identity"
 	"urshanabi/services/gateway/internal/logging"
 	"urshanabi/services/gateway/internal/requestid"
@@ -27,9 +30,10 @@ import (
 // connection, recording the request id it receives.
 type fakeQuery struct {
 	buildv1.UnimplementedBuildServiceServer
-	mu    sync.Mutex
-	gotID string
-	fail  bool
+	mu     sync.Mutex
+	gotID  string
+	fail   bool
+	detail error
 }
 
 func (f *fakeQuery) id() string {
@@ -45,6 +49,9 @@ func (f *fakeQuery) GetBuildInfo(ctx context.Context, _ *buildv1.GetBuildInfoReq
 		f.gotID = ids[0]
 		f.mu.Unlock()
 	}
+	if f.detail != nil {
+		return nil, f.detail
+	}
 	if f.fail {
 		return nil, errors.New("disk /var/lib/secret-path is full")
 	}
@@ -53,6 +60,11 @@ func (f *fakeQuery) GetBuildInfo(ctx context.Context, _ *buildv1.GetBuildInfoReq
 
 // start runs the fake query service and a gateway calling it.
 func start(t *testing.T, fake *fakeQuery) *httptest.Server {
+	return startLogging(t, fake, io.Discard)
+}
+
+// startLogging is start, with the gateway's log written to w.
+func startLogging(t *testing.T, fake *fakeQuery, w io.Writer) *httptest.Server {
 	t.Helper()
 	lis, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -69,7 +81,7 @@ func start(t *testing.T, fake *fakeQuery) *httptest.Server {
 	}
 	t.Cleanup(func() { _ = conn.Close() })
 	self := identity.Build{Component: "gateway", Version: "development", Revision: strings.Repeat("a", 40), CommittedAt: time.Unix(1, 0).UTC()}
-	web := httptest.NewServer(New(self, buildv1.NewBuildServiceClient(conn), logging.New(io.Discard)).Handler())
+	web := httptest.NewServer(New(self, buildv1.NewBuildServiceClient(conn), logging.New(w)).Handler())
 	t.Cleanup(web.Close)
 	return web
 }
@@ -142,4 +154,41 @@ func TestTheRoutersOwnRefusalsCarryAnId(t *testing.T) {
 			t.Errorf("%s %s answered %d with no request id", c.method, c.path, resp.StatusCode)
 		}
 	}
+}
+
+func TestTheGatewayNeverLogsADownstreamUnsafeArgument(t *testing.T) {
+	st, err := status.New(codes.Internal, "failed on SECRET-VALUE").WithDetails(&commonv1.ErrorDetail{
+		Reason:     "INDEX_UNAVAILABLE",
+		UnsafeArgs: []*commonv1.ErrorArgument{{Name: "query_text", Value: "SECRET-VALUE"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var log syncBuffer
+	web := startLogging(t, &fakeQuery{detail: st.Err()}, &log)
+	resp, _ := get(t, web.URL+"/v1/builds", "test-3")
+	if resp.StatusCode != http.StatusBadGateway {
+		t.Fatalf("status %d", resp.StatusCode)
+	}
+	if line := log.String(); strings.Contains(line, "SECRET-VALUE") || !strings.Contains(line, "INDEX_UNAVAILABLE") {
+		t.Fatalf("the gateway's log leaks the unsafe argument or lacks the reason: %s", line)
+	}
+}
+
+// syncBuffer is a log destination safe to read while servers write to it.
+type syncBuffer struct {
+	mu  sync.Mutex
+	out strings.Builder
+}
+
+func (b *syncBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.out.Write(p)
+}
+
+func (b *syncBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.out.String()
 }

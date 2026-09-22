@@ -44,3 +44,9 @@ Decided by the owner, so that no single company can strand Urshanabi
 `script/test` formats, lints and checks the guardrails, then compares
 the contracts with the previous commit (or, in CI, with the commit the
 change is based on) and fails on any breaking change.
+
+Every application error carries an `urshanabi.common.v1.ErrorDetail`.
+Its reason and safe arguments may be logged; its unsafe arguments, and
+the error's free-text message, never are, since either could echo
+customer data (roadmap R-06). An error without a detail is taken to come
+from the transport itself.
