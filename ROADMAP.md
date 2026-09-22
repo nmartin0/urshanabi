@@ -900,6 +900,39 @@ and lineage.
   one change from 177 KB to 839 KB over five syncs. [docs, fixed late]
 - **Done when:** fifty unchanged syncs leave storage flat.
 
+### R-139 Object storage through the standard interface only
+
+- **Class:** foundation
+- **Status:** planned
+- **Outcome:** every component reads and writes objects only through
+  the de facto standard object-storage interface, using none of any one
+  store's own features, so changing stores is a mirroring job, not a
+  redesign. Hosted cells use their cloud provider's store; self-hosted
+  production uses the foundation-governed distributed store's object
+  gateway; development and CI use a lightweight, permissively licensed
+  store. A compatibility suite covering exactly the operations Urshanabi
+  uses runs against every supported store.
+- **Practice and precedent:** the most widely used self-hosted store's
+  open-source edition was archived in February 2026, leaving no security
+  patches and no open-source binaries; the lesson drawn in practice is
+  to choose a store for its governance, not its interface alone, and to
+  address it through a stable standard endpoint. Of the successors, the
+  foundation-governed distributed store runs at petabyte scale but needs
+  dedicated skills and several gigabytes of memory per disk daemon; the
+  lightweight store is permissively licensed, mature and a single
+  binary, but led by its creator; the others are alpha, strongly
+  copyleft, or built for small geo-distributed clusters. [precedent]
+- **Learned from Elysium:** its plans named the store whose
+  open-source edition was later archived. [code]
+- **Decision:** the foundation-governed distributed store for
+  self-hosted production, and the lightweight store for development and
+  CI, both held to the compatibility suite, as are cloud providers'
+  stores (owner, 2026-09-22). The lightweight store's single-maintainer
+  governance is acceptable because it never runs production; the
+  standard interface contains the exit for both.
+- **Done when:** every supported store passes the compatibility suite
+  in CI, and a component using an operation outside the suite fails it.
+
 ### R-93 A source that changes shape is refused, not absorbed
 
 - **Class:** parity

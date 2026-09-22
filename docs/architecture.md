@@ -159,6 +159,7 @@ conflict (`RULES.md` E2).
 |---|---|---|
 | Table format | The open standard, at its third version | Foundation |
 | Table catalog | The foundation-governed catalog for that format | Foundation, top-level project |
+| Object storage | The standard object-storage interface only: the cloud provider's store when hosted, the foundation-governed distributed store's gateway when self-hosted, a lightweight store for development and CI (R-139) | Foundation in production; the lightweight store is one maintainer's, contained by the interface (owner's decision) |
 | Query engine | An embeddable columnar engine in the systems language | Foundation |
 | Distributed compute | The foundation-governed batch engine with a native accelerator, jobs written against its standard remote protocol | Foundation |
 | Streaming | The foundation-governed stream processor, version 2, state on object storage | Foundation |
