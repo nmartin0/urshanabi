@@ -2,26 +2,41 @@
 # conformance/drivers/urshanabi: how the suite reaches Urshanabi (roadmap
 # R-07). Properties use only these subcommands, so none depends on how
 # Urshanabi is started or addressed:
-#   start | stop          run or remove the whole stack from its images
-#   request METHOD PATH   one unauthenticated request; the status, the
+#   start | stop          run or remove two complete replicas of the
+#                         stack from its images
+#   request METHOD PATH   one unauthenticated request, alternating
+#                         between the replicas (R-18); the status, the
 #                         lower-cased headers and the body land in $WORK
 #   has HEADER VALUE      the last response carries exactly that header
 #   routes                one route that answers and two the router
 #                         refuses, as METHOD:PATH
-# $STACK, $PORT and $WORK come from the runner.
+#   answered REPLICA      how many builds requests that replica's gateway
+#                         served, from its log
+# $STACK, $PORT and $WORK come from the runner. Replica a answers on
+# $PORT, replica b on $PORT + 10.
 set -u
 case "${1:-}" in
     start)
-        URSHANABI_STACK=$STACK URSHANABI_PORT=$PORT URSHANABI_QUERY_PORT=$((PORT + 1)) script/server > /dev/null ;;
+        for r in a b; do
+            at=$PORT; [ "$r" = b ] && at=$((PORT + 10))
+            URSHANABI_STACK=$STACK-$r URSHANABI_PORT=$at URSHANABI_QUERY_PORT=$((at + 1)) \
+                script/server > /dev/null || exit 1
+        done ;;
     stop)
-        URSHANABI_STACK=$STACK script/server stop > /dev/null ;;
+        for r in a b; do URSHANABI_STACK=$STACK-$r script/server stop > /dev/null; done ;;
     request)
-        curl -s -X "$2" -o "$WORK/body" -D "$WORK/raw" -w '%{http_code}' "http://127.0.0.1:$PORT$3" > "$WORK/status" || exit 1  # name-ok
+        # Alternate: odd requests are sent to replica a, even ones to b.
+        n=$(( $(cat "$WORK/requests" 2>/dev/null || echo 0) + 1 ))
+        echo "$n" > "$WORK/requests"
+        at=$PORT; [ $((n % 2)) -eq 0 ] && at=$((PORT + 10))
+        curl -s -X "$2" -o "$WORK/body" -D "$WORK/raw" -w '%{http_code}' "http://127.0.0.1:$at$3" > "$WORK/status" || exit 1  # name-ok
         tr -d '\r' < "$WORK/raw" | tr '[:upper:]' '[:lower:]' > "$WORK/headers" ;;
     has)
         grep -q -x -F "$2: $3" "$WORK/headers" ;;
     routes)
         echo "GET:/v1/builds GET:/no-such-route POST:/v1/builds" ;;
+    answered)
+        podman logs "$STACK-$2-gateway" 2>&1 | grep -c '"msg":"GetBuildInfo"' ;;  # name-ok
     *)
-        echo "usage: conformance/drivers/urshanabi start|stop|request|has|routes" >&2; exit 2 ;;
+        echo "usage: conformance/drivers/urshanabi start|stop|request|has|routes|answered" >&2; exit 2 ;;
 esac

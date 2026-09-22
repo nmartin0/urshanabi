@@ -471,7 +471,12 @@ any commercial system needs, whatever its category.
 ### R-18 No shared in-process state
 
 - **Class:** foundation
-- **Status:** planned
+- **Status:** done — the conformance suite runs against two complete
+  replicas of the stack on every push, alternating every request between
+  them, and fails unless both replicas answered; a driver that never
+  alternated was planted and caught. Today's services hold no state, so
+  the check guards the future (`conformance/drivers/urshanabi`,
+  `conformance/script/test-integration`).
 - **Outcome:** every service is stateless; state lives in the stores
   built for it.
 - **Learned from Elysium:** per-object locks, the pending-write

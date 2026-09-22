@@ -12,6 +12,8 @@ that checks it, reaching each system through a thin driver.
 **Status:** the suite runs, test-first. `script/test-integration`
 starts the stack from its container images and runs every executable
 in `properties/`, each reaching Urshanabi only through
-`drivers/urshanabi`. A property exits 0 when it holds, 1 when it does
+`drivers/urshanabi`, which runs two replicas of every service and
+alternates requests between them (roadmap R-18); the run fails unless
+both answered. A property exits 0 when it holds, 1 when it does
 not, and 2 when Urshanabi cannot yet be held to it, naming the roadmap
 item it waits for. Each property is seen to fail before it passes.

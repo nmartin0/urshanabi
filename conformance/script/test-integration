@@ -2,8 +2,9 @@
 # conformance/script/test-integration: check Urshanabi, black-box through
 # its driver, against every property implemented from
 # conformance/BEHAVIOURS.md (roadmap R-07). Properties are discovered,
-# never listed. A failure fails the run; a pending property is reported
-# with the roadmap item it waits for.
+# never listed, and requests alternate between two replicas of every
+# service (R-18). A failure fails the run; a pending property is
+# reported with the roadmap item it waits for.
 set -u
 cd "$(dirname "$0")/../.." || exit 1
 PATH="$PWD/.tools/bin:$PATH"
@@ -28,6 +29,11 @@ for p in conformance/properties/*; do
     esac
 done
 [ "$found" -gt 0 ] || { echo "conformance: FAILED: no properties found"; exit 1; }
+# The properties held against two replicas only if both answered (R-18).
+for r in a b; do
+    n=$("$DRIVER" answered "$r")
+    [ "$n" -gt 0 ] || { echo "conformance: FAILED: replica $r answered no requests, so the replicas were not both exercised"; exit 1; }
+done
 if [ -n "$failed" ]; then
     echo "conformance: FAILED:$failed"
     exit 1
