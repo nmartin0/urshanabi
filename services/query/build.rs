@@ -71,7 +71,17 @@ fn generate_contracts(root: &Path) {
 /// Records the version, source revision and commit time as compile-time
 /// environment variables.
 fn record_identity(root: &Path) {
-    let version = env::var("URSHANABI_VERSION").unwrap_or_else(|_| "development".to_owned());
+    // A build from uncommitted changes would otherwise claim a revision
+    // it was not built from: a development build says so, and a release
+    // is refused -- here at build time; the gateway, which has no build
+    // step, refuses one at startup.
+    let modified = !repository(root, &["status", "--porcelain"]).is_empty();
+    let version = match (env::var("URSHANABI_VERSION"), modified) {
+        (Ok(release), false) => release,
+        (Ok(_), true) => panic!("a release is never built from uncommitted changes"),
+        (Err(_), false) => "development".to_owned(),
+        (Err(_), true) => "development+modified".to_owned(),
+    };
 
     let revision = env::var("URSHANABI_SOURCE_REVISION")
         .unwrap_or_else(|_| repository(root, &["rev-parse", "HEAD"]));
@@ -105,6 +115,11 @@ fn record_identity(root: &Path) {
         directive("rerun-if-env-changed", var);
     }
 
+    // Rerun when any file changes, so the modified flag is never stale; a
+    // file added later is noticed at the next rerun.
+    for file in repository(root, &["ls-files", "-co", "--exclude-standard"]).lines() {
+        directive("rerun-if-changed", &root.join(file).display().to_string());
+    }
     // Rebuild when the checked-out commit changes.
     let head = repository(root, &["rev-parse", STORAGE_PATH, "HEAD"]);
     directive("rerun-if-changed", &root.join(head).display().to_string());

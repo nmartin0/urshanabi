@@ -46,13 +46,12 @@ func New(self identity.Build, query buildv1.BuildServiceClient, log *slog.Logger
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /v1/builds", s.builds)
-	return mux
+	return requestid.Middleware(mux)
 }
 
 // builds answers with the gateway's build first, then the query service's.
 func (s *Server) builds(w http.ResponseWriter, r *http.Request) {
-	id := requestid.FromHTTP(r)
-	w.Header().Set(requestid.Header, id)
+	id := requestid.FromContext(r.Context())
 	ctx, cancel := context.WithTimeout(metadata.AppendToOutgoingContext(r.Context(), requestid.MetadataKey, id), callTimeout)
 	defer cancel()
 

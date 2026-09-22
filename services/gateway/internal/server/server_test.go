@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -26,14 +27,23 @@ import (
 // connection, recording the request id it receives.
 type fakeQuery struct {
 	buildv1.UnimplementedBuildServiceServer
+	mu    sync.Mutex
 	gotID string
 	fail  bool
+}
+
+func (f *fakeQuery) id() string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.gotID
 }
 
 func (f *fakeQuery) GetBuildInfo(ctx context.Context, _ *buildv1.GetBuildInfoRequest) (*buildv1.GetBuildInfoResponse, error) {
 	md, _ := metadata.FromIncomingContext(ctx)
 	if ids := md.Get(requestid.MetadataKey); len(ids) == 1 {
+		f.mu.Lock()
 		f.gotID = ids[0]
+		f.mu.Unlock()
 	}
 	if f.fail {
 		return nil, errors.New("disk /var/lib/secret-path is full")
@@ -99,12 +109,12 @@ func TestTheRequestIdReachesTheQueryService(t *testing.T) {
 	fake := &fakeQuery{}
 	web := start(t, fake)
 	resp, _ := get(t, web.URL+"/v1/builds", "trace-me")
-	if fake.gotID != "trace-me" || resp.Header.Get(requestid.Header) != "trace-me" {
-		t.Fatalf("query saw %q, response header %q", fake.gotID, resp.Header.Get(requestid.Header))
+	if fake.id() != "trace-me" || resp.Header.Get(requestid.Header) != "trace-me" {
+		t.Fatalf("query saw %q, response header %q", fake.id(), resp.Header.Get(requestid.Header))
 	}
 	resp, _ = get(t, web.URL+"/v1/builds", "")
-	if fake.gotID == "" || fake.gotID != resp.Header.Get(requestid.Header) {
-		t.Fatalf("an assigned id was not passed on: query %q, header %q", fake.gotID, resp.Header.Get(requestid.Header))
+	if fake.id() == "" || fake.id() != resp.Header.Get(requestid.Header) {
+		t.Fatalf("an assigned id was not passed on: query %q, header %q", fake.id(), resp.Header.Get(requestid.Header))
 	}
 }
 
@@ -116,5 +126,20 @@ func TestAFailureDownstreamRevealsNothingAboutIt(t *testing.T) {
 	}
 	if strings.Contains(string(body), "secret-path") || !strings.Contains(string(body), "test-2") {
 		t.Fatalf("the error body leaks detail or lacks the request id: %s", body)
+	}
+}
+
+func TestTheRoutersOwnRefusalsCarryAnId(t *testing.T) {
+	web := start(t, &fakeQuery{})
+	for _, c := range []struct{ method, path string }{{"GET", "/nope"}, {"POST", "/v1/builds"}} {
+		req, _ := http.NewRequest(c.method, web.URL+c.path, nil)
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_ = resp.Body.Close()
+		if !requestid.Valid(resp.Header.Get(requestid.Header)) {
+			t.Errorf("%s %s answered %d with no request id", c.method, c.path, resp.StatusCode)
+		}
 	}
 }

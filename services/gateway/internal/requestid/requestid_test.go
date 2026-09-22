@@ -1,6 +1,7 @@
 package requestid
 
 import (
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -23,6 +24,19 @@ func TestFreshIdsAreValidAndDistinct(t *testing.T) {
 	a, b := New(), New()
 	if !Valid(a) || a == b {
 		t.Fatalf("fresh ids %q and %q", a, b)
+	}
+}
+
+func TestTheMiddlewareGivesEveryResponseAnId(t *testing.T) {
+	var seen string
+	h := Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		seen = FromContext(r.Context())
+		http.NotFound(w, r)
+	}))
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, httptest.NewRequest("GET", "/anything", nil))
+	if id := w.Header().Get(Header); !Valid(id) || id != seen {
+		t.Fatalf("response id %q, route saw %q", id, seen)
 	}
 }
 

@@ -28,7 +28,9 @@ message GetBuildInfoResponse {
 message BuildInfo {
   // The component's directory name, such as "gateway".
   string component = 1;
-  // The released version, or "development" for an unreleased build.
+  // The released version, or "development" for an unreleased build;
+  // "development+modified" when built from uncommitted changes. A
+  // release is never built from uncommitted changes.
   string version = 2;
   // The full revision of the source the build came from.
   string source_revision = 3;

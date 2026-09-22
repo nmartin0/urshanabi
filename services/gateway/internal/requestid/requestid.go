@@ -3,6 +3,7 @@
 package requestid
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"net/http"
@@ -44,4 +45,23 @@ func FromHTTP(r *http.Request) string {
 		return id
 	}
 	return New()
+}
+
+type contextKey struct{}
+
+// Middleware gives every request an id before any route sees it -- the
+// caller's if valid, a fresh one otherwise -- and sets it on every
+// response, including the router's own refusals.
+func Middleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id := FromHTTP(r)
+		w.Header().Set(Header, id)
+		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), contextKey{}, id)))
+	})
+}
+
+// FromContext returns the id Middleware gave the request.
+func FromContext(ctx context.Context) string {
+	id, _ := ctx.Value(contextKey{}).(string)
+	return id
 }

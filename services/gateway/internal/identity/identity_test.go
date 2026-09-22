@@ -29,6 +29,20 @@ func TestTheIdentityDescribesTheSource(t *testing.T) {
 	}
 }
 
+func TestABuildFromUncommittedChangesSaysSo(t *testing.T) {
+	i := info(strings.Repeat("a", 40), "2026-09-21T12:00:00Z")
+	i.Settings = append(i.Settings, debug.BuildSetting{Key: "vcs.modified", Value: "true"})
+	b, err := FromBuildInfo(i, "")
+	if err != nil || b.Version != "development+modified" {
+		t.Fatalf("got %q, %v", b.Version, err)
+	}
+	version = "1.0.0"
+	defer func() { version = "development" }()
+	if _, err := FromBuildInfo(i, ""); err == nil {
+		t.Fatal("a release built from uncommitted changes was accepted")
+	}
+}
+
 func TestABinaryOutsideARepositoryHasNoIdentity(t *testing.T) {
 	if _, err := FromBuildInfo(info("", ""), ""); err == nil {
 		t.Fatal("an identity without a revision was accepted")

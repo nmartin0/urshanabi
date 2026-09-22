@@ -53,7 +53,14 @@ fn the_server_reports_its_own_build_identity() {
         assert_eq!(builds.len(), 1, "the query service reports only itself");
         let build = &builds[0];
         assert_eq!(build.component, "query");
-        assert_eq!(build.version, "development");
+        assert!(
+            matches!(
+                build.version.as_str(),
+                "development" | "development+modified"
+            ),
+            "unexpected version {:?}",
+            build.version
+        );
         assert!(build.source_revision.bytes().all(|b| b.is_ascii_hexdigit()));
         assert_eq!(build.source_revision.len(), 40);
         let committed = build.source_committed_at.expect("a commit time");

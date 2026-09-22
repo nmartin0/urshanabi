@@ -4,7 +4,7 @@ package main
 
 import (
 	"context"
-	"errors"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -38,24 +38,27 @@ func main() {
 	defer func() { _ = conn.Close() }()
 
 	web := &http.Server{
-		Addr:              env("URSHANABI_LISTEN", "127.0.0.1:8080"),
 		Handler:           server.New(self, buildv1.NewBuildServiceClient(conn), log).Handler(),
 		ReadHeaderTimeout: 5 * time.Second,
+		WriteTimeout:      30 * time.Second,
+		IdleTimeout:       2 * time.Minute,
+	}
+	address := env("URSHANABI_LISTEN", "127.0.0.1:8080")
+	lis, err := net.Listen("tcp", address)
+	if err != nil {
+		log.Error("cannot listen", "address", address, "error", err)
+		os.Exit(1)
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	go func() { // name-ok
-		<-ctx.Done()
-		log.Info("shutting down")
-		shutdown, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-		_ = web.Shutdown(shutdown)
-	}()
-	log.Info("listening", "address", web.Addr)
-	if err := web.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+	log.Info("listening", "address", lis.Addr().String())
+	// Serve returns only after in-flight requests finish, so the connection
+	// they use is closed after them, not under them.
+	if err := server.Serve(ctx, web, lis, 10*time.Second); err != nil {
 		log.Error("the gateway stopped", "error", err)
 		os.Exit(1)
 	}
+	log.Info("stopped")
 }
 
 func env(name, fallback string) string {

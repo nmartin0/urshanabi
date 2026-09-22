@@ -39,8 +39,11 @@ code=$(curl -s -o "$work/body" -w '%{http_code}' -H "X-Request-Id: $id" "http://
 # The encoder varies its whitespace on purpose, so compare without it.
 body=$(tr -d ' \n' < "$work/body")
 revision=$(git rev-parse HEAD)  # name-ok
+# Built from uncommitted changes, both services must say so.
+version=development
+[ -z "$(git status --porcelain)" ] || version=development+modified  # name-ok
 committed=$(TZ=UTC git log -1 --format=%cd --date=format-local:%Y-%m-%dT%H:%M:%SZ)  # name-ok
-expected="{\"builds\":[{\"component\":\"gateway\",\"version\":\"development\",\"sourceRevision\":\"$revision\",\"sourceCommittedAt\":\"$committed\"},{\"component\":\"query\",\"version\":\"development\",\"sourceRevision\":\"$revision\",\"sourceCommittedAt\":\"$committed\"}]}"
+expected="{\"builds\":[{\"component\":\"gateway\",\"version\":\"$version\",\"sourceRevision\":\"$revision\",\"sourceCommittedAt\":\"$committed\"},{\"component\":\"query\",\"version\":\"$version\",\"sourceRevision\":\"$revision\",\"sourceCommittedAt\":\"$committed\"}]}"
 [ "$body" = "$expected" ] || fail "unexpected builds: got $body, wanted $expected"
 grep -q "\"request_id\":\"$id\"" "$work/gateway.log" || fail "the gateway did not log the request id"
 grep -q "request_id=\"$id\"" "$work/query.log" || fail "the query service did not log the request id"

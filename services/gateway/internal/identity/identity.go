@@ -61,9 +61,18 @@ func FromBuildInfo(info *debug.BuildInfo, artifact string) (Build, error) {
 	if !sha256Hex.MatchString(artifact) {
 		artifact = ""
 	}
+	v := version
+	if settings["vcs.modified"] == "true" {
+		// The revision alone would claim source this binary was not built
+		// from, so a development build says so, and a release is refused.
+		if v != "development" {
+			return Build{}, errors.New("a release is never built from uncommitted changes")
+		}
+		v = "development+modified"
+	}
 	return Build{
 		Component:      Component,
-		Version:        version,
+		Version:        v,
 		Revision:       revision,
 		CommittedAt:    committed.UTC(),
 		ArtifactSHA256: artifact,

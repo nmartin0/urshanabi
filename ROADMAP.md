@@ -198,13 +198,14 @@ any commercial system needs, whatever its category.
 ### R-08 A request id on every route from the first route
 
 - **Class:** foundation
-- **Status:** in progress — the gateway assigns an id, or keeps a
-  caller's valid one, passes it to the query service, and both log it;
-  ids that could forge log lines are refused
+- **Status:** in progress — the gateway gives every request an id
+  before any route sees it, including the router's own refusals, keeps a
+  caller's valid id, refuses ids that could forge log lines, and passes
+  it to the query service; both log it
   (`services/gateway/internal/requestid/requestid.go`,
   `e2e/script/test-integration`); remaining: a test enumerating every
-  route, the id in audit records, and emission to the vendor-neutral
-  telemetry standard.
+  route as routes are added, the id in audit records, and emission to
+  the vendor-neutral telemetry standard.
 - **Outcome:** every request carries an id from the gateway through
   every service, into every audit record and log line, with traces,
   metrics and logs emitted to a vendor-neutral telemetry standard.
@@ -668,10 +669,11 @@ any commercial system needs, whatever its category.
 
 - **Class:** foundation
 - **Status:** in progress — the gateway answers with its own build
-  identity and the query service's, and the walking skeleton's journey
-  proves both report the commit they were built from
-  (`e2e/script/test-integration`); remaining: published fingerprints,
-  and attestation checked against them.
+  identity and the query service's; both report the commit they were
+  built from, say so when built from uncommitted changes, and refuse a
+  release built from them; the walking skeleton's journey proves the two
+  agree (`e2e/script/test-integration`); remaining: published
+  fingerprints, and attestation checked against them.
 - **Outcome:** the fingerprint of every production build is published
   to the tamper-evident log (R-88), and every component's attestation is
   checked against it, so a customer can verify exactly which code is
