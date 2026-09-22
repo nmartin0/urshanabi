@@ -17,6 +17,8 @@ script/cibuild    # exactly what CI runs: bootstrap, test, test-integration
 - `systems-gates PACKAGE` — the systems-language gates, and
   `systems-toolchain` — its toolchain, each shared by every component
   in that language so none can drift.
+- `services-gates DIR` and `services-toolchain` — the same for the
+  services language.
 - `report-tool-updates` — reports any pinned tool with a newer release;
   run weekly by its own workflow, never by `test`, so a new upstream
   release cannot fail anyone's push.

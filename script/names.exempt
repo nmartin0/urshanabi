@@ -10,3 +10,5 @@ deny.toml
 services/query/Cargo.toml
 libs/ontology/Cargo.toml
 script/ontology-parsers.list
+go.mod
+go.sum

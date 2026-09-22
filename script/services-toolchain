@@ -1,0 +1,14 @@
+#!/bin/sh
+# script/services-toolchain: confirm the services-language toolchain,
+# shared by every component in that language. The module manifest pins
+# the exact toolchain; where the toolchain may switch versions itself, as
+# in CI, it fetches that one, verified against its checksum database.
+set -u
+cd "$(dirname "$0")/.." || exit 1
+if ! command -v go >/dev/null 2>&1; then  # name-ok
+    echo "FAIL: no services-language toolchain is installed"
+    exit 1
+fi
+go version || exit 1  # name-ok
+[ -x .tools/bin/buf ] || { echo "FAIL: the contract toolchain is missing; run script/bootstrap"; exit 1; }  # name-ok
+echo "services-language toolchain present."

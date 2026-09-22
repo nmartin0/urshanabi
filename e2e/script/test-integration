@@ -1,0 +1,47 @@
+#!/bin/sh
+# e2e/script/test-integration: the walking skeleton's journey (roadmap
+# R-04, R-121). A request enters the gateway over HTTP, crosses to the
+# query service over the RPC protocol, and returns both builds. Both are
+# built from this commit, so both must report its revision and commit
+# time, and the request id must appear in both services' logs.
+set -u
+cd "$(dirname "$0")/../.." || exit 1
+PATH="$PWD/.tools/bin:$PATH"
+export PATH
+work=$(mktemp -d) || exit 1
+pids=""
+cleanup() {
+    for p in $pids; do kill "$p" 2>/dev/null; done
+    rm -rf "$work"
+}
+trap cleanup EXIT
+fail() { echo "e2e: FAILED: $1"; for f in "$work"/*.log "$work/body"; do [ -f "$f" ] && { echo "--- $f"; cat "$f"; }; done; exit 1; }
+
+cargo build --locked -q -p query || fail "the query service does not build"  # name-ok
+services/gateway/script/generate || fail "the gateway's contract code does not generate"
+go build -o "$work/gateway" ./services/gateway/cmd/gateway || fail "the gateway does not build"  # name-ok
+
+base=$((20000 + $$ % 20000))
+query=127.0.0.1:$base
+gateway=127.0.0.1:$((base + 1))
+URSHANABI_LISTEN=$query target/debug/query 2> "$work/query.log" &
+pids="$pids $!"
+URSHANABI_LISTEN=$gateway URSHANABI_QUERY_ADDRESS=$query "$work/gateway" 2> "$work/gateway.log" &
+pids="$pids $!"
+for _ in $(seq 1 40); do
+    curl -s -o /dev/null "http://$gateway/" && grep -q listening "$work/query.log" && break  # name-ok
+    sleep 0.25
+done
+
+id="e2e-$$"
+code=$(curl -s -o "$work/body" -w '%{http_code}' -H "X-Request-Id: $id" "http://$gateway/v1/builds")  # name-ok
+[ "$code" = 200 ] || fail "the gateway answered $code"
+# The encoder varies its whitespace on purpose, so compare without it.
+body=$(tr -d ' \n' < "$work/body")
+revision=$(git rev-parse HEAD)  # name-ok
+committed=$(TZ=UTC git log -1 --format=%cd --date=format-local:%Y-%m-%dT%H:%M:%SZ)  # name-ok
+expected="{\"builds\":[{\"component\":\"gateway\",\"version\":\"development\",\"sourceRevision\":\"$revision\",\"sourceCommittedAt\":\"$committed\"},{\"component\":\"query\",\"version\":\"development\",\"sourceRevision\":\"$revision\",\"sourceCommittedAt\":\"$committed\"}]}"
+[ "$body" = "$expected" ] || fail "unexpected builds: got $body, wanted $expected"
+grep -q "\"request_id\":\"$id\"" "$work/gateway.log" || fail "the gateway did not log the request id"
+grep -q "request_id=\"$id\"" "$work/query.log" || fail "the query service did not log the request id"
+echo "e2e: the walking skeleton's journey passed."

@@ -9,6 +9,12 @@ safely.
 - **Speaks to:** browsers, API clients and external agents
 - **Roadmap:** R-36, R-44 to R-48, R-99, R-106
 
-**Status:** planned; nothing is built yet. When work starts, this
-project gains `script/bootstrap`, `script/test` and
-`script/test-integration` (`RULES.md` E5).
+**Status:** walking skeleton. It serves `GET /v1/builds`, answering
+with its own build identity and the query service's, and gives every
+request an id that follows it into the query service and both logs.
+
+- `script/generate` generates the contract code, never committed.
+- `script/test` runs the services-language gates
+  (`script/services-gates`).
+- `script/test-integration` starts the real binary and requires a plain
+  502, carrying the request id, when no query service answers.

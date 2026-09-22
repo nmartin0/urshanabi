@@ -478,6 +478,30 @@ expect_msg fail "another language's parser fails" "pipelines/load.py:1 imports t
 parsers o5; printf 'path := "ontology/types/customer.toml"\n' > "$t/services/x/main.go"  # name-ok
 expect_msg fail "code naming a definition file fails" "names an ontology definition file" "$t/script/check-ontology-parsers"
 
+
+# --- the services-language gates (R-127): each fails on a planted fault
+# The real component script, run against a dependency-free module.
+svcmod() {  # svcmod NAME: a one-package module with the gateway's gates
+    tree "$1" services-gates
+    mkdir -p "$t/services/gateway/script" "$t/services/gateway/fixture"
+    cp "$repo/services/gateway/script/test" "$t/services/gateway/script/" || exit 1
+    printf 'module urshanabi\n\ngo 1.27\n' > "$t/go.mod"  # name-ok
+    printf 'package fixture\n\n// Double doubles a number.\nfunc Double(n int) int {\n\treturn n * 2\n}\n' > "$t/services/gateway/fixture/fixture.go"  # name-ok
+    printf 'package fixture\n\nimport "testing"\n\nfunc TestDouble(t *testing.T) {\n\tif Double(2) != 4 {\n\t\tt.Fatal("wrong")\n\t}\n}\n' > "$t/services/gateway/fixture/fixture_test.go"  # name-ok
+}
+svcmod g1
+expect pass "a clean module passes every services-language gate" "$t/services/gateway/script/test"
+svcmod g2; plant 's/return n \* 2/return n*2 /' services/gateway/fixture/fixture.go  # name-ok
+expect_msg fail "badly formatted code fails the formatting gate" "FAILED: formatting" "$t/services/gateway/script/test"
+svcmod g3; printf '\n// Show prints.\nfunc Show() string {\n\treturn fmt.Sprintf("%%d")\n}\n' >> "$t/services/gateway/fixture/fixture.go"; plant 's/^package fixture$/package fixture\n\nimport "fmt"/' services/gateway/fixture/fixture.go  # name-ok
+expect_msg fail "a vet finding fails the vet gate" "FAILED: vet" "$t/services/gateway/script/test"
+svcmod g4; plant 's/Double(2) != 4/Double(2) != 5/' services/gateway/fixture/fixture_test.go  # name-ok
+expect_msg fail "a failing test fails the tests gate" "FAILED: tests-UTC" "$t/services/gateway/script/test"
+svcmod g5; printf 'package fixture\n\nimport (\n\t"testing"\n\t"time"\n)\n\nfunc TestAssumesUTC(t *testing.T) {\n\tif _, offset := time.Now().Zone(); offset != 0 {\n\t\tt.Fatal("local time is not UTC")\n\t}\n}\n' > "$t/services/gateway/fixture/zone_test.go"  # name-ok
+expect_msg fail "a local-time read fails under both non-UTC zones, and only them" "FAILED: tests-America/Sao_Paulo tests-America/New_York$" "$t/services/gateway/script/test"
+svcmod g6; printf '\nrequire example.com/unused v1.0.0\n' >> "$t/go.mod"  # name-ok
+expect_msg fail "an untidy module manifest fails the modules gate" "FAILED: modules" "$t/services/gateway/script/test"
+
 # Guard: a self-test whose helper is missing or misspelled fails with
 # "not found" and records nothing. Count the calls written in this file
 # and require that every one ran.

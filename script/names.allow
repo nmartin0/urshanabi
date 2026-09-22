@@ -4,3 +4,4 @@ writes go through
 cargo.toml
 cargo.lock
 rust-toolchain.toml
+.go`

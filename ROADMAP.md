@@ -102,7 +102,10 @@ any commercial system needs, whatever its category.
 ### R-04 One end-to-end test per wire
 
 - **Class:** foundation
-- **Status:** planned
+- **Status:** in progress — the gateway's tests mock the query
+  service, and the walking skeleton's journey drives the real one
+  through its real entry point (`e2e/script/test-integration`);
+  remaining: the same for every handler mocked from now on.
 - **Outcome:** every handler a test mocks has one test driving the
   real one through its real entry point.
 - **Learned from Elysium:** three shipped commits crashed on a user's
@@ -195,10 +198,13 @@ any commercial system needs, whatever its category.
 ### R-08 A request id on every route from the first route
 
 - **Class:** foundation
-- **Status:** in progress — the query service logs the caller's
-  request id, refusing any that could forge log lines
-  (`services/query/src/service.rs`); remaining: the gateway assigning
-  one on every route.
+- **Status:** in progress — the gateway assigns an id, or keeps a
+  caller's valid one, passes it to the query service, and both log it;
+  ids that could forge log lines are refused
+  (`services/gateway/internal/requestid/requestid.go`,
+  `e2e/script/test-integration`); remaining: a test enumerating every
+  route, the id in audit records, and emission to the vendor-neutral
+  telemetry standard.
 - **Outcome:** every request carries an id from the gateway through
   every service, into every audit record and log line, with traces,
   metrics and logs emitted to a vendor-neutral telemetry standard.
@@ -226,11 +232,12 @@ any commercial system needs, whatever its category.
 ### R-10 Reproducible installs, exactly
 
 - **Class:** foundation
-- **Status:** in progress — tools are pinned and checksum-verified,
-  and the systems-language workspace builds only from its committed
-  lockfile (`script/tools.lock`, `Cargo.lock`); remaining: hashed
-  lockfiles for the other languages, each refusing a manifest changed
-  without its lockfile.
+- **Status:** in progress — tools are pinned and checksum-verified;
+  the systems-language workspace builds only from its lockfile, and the
+  services-language gates refuse a module that differs from its recorded
+  hash or an untidy manifest (`script/tools.lock`, `Cargo.lock`,
+  `script/services-gates`); remaining: the other two languages'
+  lockfiles.
 - **Outcome:** every language role installs from a hashed lockfile; CI
   fails when a lockfile drifts from its manifest.
 - **Learned from Elysium:** dependencies were bounded rather than
@@ -332,12 +339,11 @@ any commercial system needs, whatever its category.
 ### R-14 Tests prove no code depends on the host's timezone
 
 - **Class:** foundation
-- **Status:** in progress — the systems language's tests run under
-  UTC, São Paulo and New York, set by the component's own script, and a
-  self-test proves a deliberate local-time read fails in both non-UTC
-  zones and passes under UTC alone (`services/query/script/test`,
-  `script/check-scripts`); remaining: the same three runs for each other
-  language, with its first component.
+- **Status:** in progress — the systems and services languages' tests
+  run under UTC, São Paulo and New York, and self-tests prove a
+  deliberate local-time read fails in both non-UTC zones only, in each
+  (`script/systems-gates`, `script/services-gates`,
+  `script/check-scripts`); remaining: the other two languages.
 - **Outcome:** date-sensitive tests run three times: under UTC, under
   a zone behind UTC, and under a zone observing daylight saving. The
   zone is set by the test scripts themselves, so a local run and CI run
@@ -359,8 +365,9 @@ any commercial system needs, whatever its category.
 
 - **Class:** foundation
 - **Status:** in progress — the rule is recorded, contracts use the
-  UTC timestamp type, and the query service's logs are UTC, proved under
-  three zones (`services/query/src/logging.rs`); remaining: the
+  UTC timestamp type, and both services' logs are UTC, proved under
+  three zones (`services/query/src/logging.rs`,
+  `services/gateway/internal/logging/logging.go`); remaining: the
   three-zone tests in the other languages, and civil-time scheduling.
 - **Outcome:** every instant is stored, processed, compared and
   transmitted in UTC: in contracts as the standard UTC timestamp type,
@@ -660,10 +667,11 @@ any commercial system needs, whatever its category.
 ### R-121 Every production build is publicly verifiable
 
 - **Class:** foundation
-- **Status:** in progress — the query service serves its build
-  identity from the contract (`services/query/src/identity.rs`);
-  remaining: the gateway reporting every component, published
-  fingerprints, and attestation checked against them.
+- **Status:** in progress — the gateway answers with its own build
+  identity and the query service's, and the walking skeleton's journey
+  proves both report the commit they were built from
+  (`e2e/script/test-integration`); remaining: published fingerprints,
+  and attestation checked against them.
 - **Outcome:** the fingerprint of every production build is published
   to the tamper-evident log (R-88), and every component's attestation is
   checked against it, so a customer can verify exactly which code is
@@ -706,10 +714,11 @@ any commercial system needs, whatever its category.
 
 - **Class:** foundation
 - **Status:** in progress — repository gates, boundaries and the
-  scripts' own tests run in CI, and the systems language's gates run on
-  its first component, each broken on purpose by a self-test
-  (`script/check-scripts`, `services/query/script/test`); remaining: the
-  other languages' gates with their first components, and the
+  scripts' own tests run in CI, and the systems and services languages'
+  gates run on their first components, each broken on purpose by a
+  self-test (`script/check-scripts`, `script/systems-gates`,
+  `script/services-gates`); remaining: the other two languages' gates,
+  vulnerability and licence gates for the services language, and the
   dependency-rung check.
 - **Outcome:** `RULES.md` part three is enforced in CI from the first
   commit: every dependency records its rung on the standard-library

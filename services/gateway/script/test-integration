@@ -1,0 +1,27 @@
+#!/bin/sh
+# services/gateway/script/test-integration: build the real binary from the
+# repository, so it carries its source identity, start it with no query
+# service behind it, and require a plain 502 carrying the request id.
+set -u
+cd "$(dirname "$0")/../../.." || exit 1
+PATH="$PWD/.tools/bin:$PATH"
+export PATH
+work=$(mktemp -d) || exit 1
+pid=""
+trap 'rm -rf "$work"; [ -n "$pid" ] && kill "$pid" 2>/dev/null' EXIT
+services/gateway/script/generate || exit 1
+go build -o "$work/gateway" ./services/gateway/cmd/gateway || exit 1  # name-ok
+port=$((20000 + $$ % 20000))
+URSHANABI_LISTEN="127.0.0.1:$port" URSHANABI_QUERY_ADDRESS="127.0.0.1:1" "$work/gateway" 2> "$work/log" &
+pid=$!
+for _ in 1 2 3 4 5 6 7 8 9 10; do
+    curl -s -o /dev/null "http://127.0.0.1:$port/" && break  # name-ok
+    sleep 0.5
+done
+code=$(curl -s -o "$work/body" -w '%{http_code}' -H 'X-Request-Id: smoke-1' "http://127.0.0.1:$port/v1/builds")  # name-ok
+if [ "$code" = 502 ] && grep -q '"request_id":"smoke-1"' "$work/body" && grep -q '"request_id":"smoke-1"' "$work/log"; then
+    echo "gateway: integration tests passed."
+else
+    echo "gateway: integration tests FAILED (status $code)"; cat "$work/body" "$work/log"
+    exit 1
+fi

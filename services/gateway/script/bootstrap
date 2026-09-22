@@ -1,0 +1,5 @@
+#!/bin/sh
+# services/gateway/script/bootstrap: the shared services-language toolchain.
+set -u
+cd "$(dirname "$0")/../../.." || exit 1
+exec script/services-toolchain

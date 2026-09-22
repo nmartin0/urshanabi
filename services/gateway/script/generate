@@ -1,0 +1,13 @@
+#!/bin/sh
+# services/gateway/script/generate: generate the gateway's contract code
+# from contracts/ with the generators pinned in the module manifest,
+# run locally, never as hosted plugins. The output is never committed
+# (roadmap R-11).
+set -u
+cd "$(dirname "$0")/../../.." || exit 1
+PATH="$PWD/.tools/bin:$PATH"
+export PATH
+out=services/gateway/internal/gen
+rm -rf "$out"
+template='{"version":"v2","managed":{"enabled":true,"override":[{"file_option":"go_package_prefix","value":"urshanabi/services/gateway/internal/gen"}]},"plugins":[{"local":["go","tool","protoc-gen-go"],"out":"'$out'","opt":["paths=source_relative"]},{"local":["go","tool","protoc-gen-go-grpc"],"out":"'$out'","opt":["paths=source_relative"]}]}'  # name-ok
+buf generate contracts --template "$template" || { echo "gateway: contract generation FAILED"; exit 1; }  # name-ok

@@ -1,0 +1,6 @@
+#!/bin/sh
+# e2e/script/bootstrap: the journeys build every service, so they need
+# both service toolchains.
+set -u
+cd "$(dirname "$0")/../.." || exit 1
+script/systems-toolchain && script/services-toolchain

@@ -1,0 +1,4 @@
+#!/bin/sh
+# e2e/script/test: the journeys have no unit tests; they run under
+# script/test-integration, never as the first line of defence (RULES.md E4).
+echo "e2e: no unit tests; the journeys run under script/test-integration."

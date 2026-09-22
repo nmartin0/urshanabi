@@ -8,6 +8,10 @@ Never the first line of defence (`RULES.md` E4).
 - **Speaks to:** the whole system
 - **Roadmap:** R-127
 
-**Status:** planned; nothing is built yet. When work starts, this
-project gains `script/bootstrap`, `script/test` and
-`script/test-integration` (`RULES.md` E5).
+**Status:** the walking skeleton's journey: a request enters the
+gateway over HTTP, crosses to the query service, and returns both
+builds, each reporting the commit it was built from, with the request
+id in both services' logs. The journey is written in POSIX shell; the
+language for later journeys is still to be decided.
+
+- `script/test-integration` builds both services and runs the journey.

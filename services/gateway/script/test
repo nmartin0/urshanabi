@@ -1,0 +1,5 @@
+#!/bin/sh
+# services/gateway/script/test: this component's services-language gates.
+set -u
+cd "$(dirname "$0")/../../.." || exit 1
+exec script/services-gates services/gateway

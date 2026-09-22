@@ -46,8 +46,9 @@ same pinned versions (`script/README.md`).
 ## Status
 
 Phase 0 is under way. The repository checks and CI run on every push,
-the contracts component is built, and the query service has begun. Every
-roadmap item's status says what is done and what remains.
+and the walking skeleton runs end to end: a request crosses from the
+gateway to the query service and back. Every roadmap item's status says
+what is done and what remains.
 
 ## Licence
 
