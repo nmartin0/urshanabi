@@ -1,0 +1,45 @@
+#!/bin/sh
+# conformance/catalogs/drivers/development-catalog: the table catalog, in
+# memory, over its own development store (roadmap R-139).
+#   start   run the store and the catalog, with credentials generated for
+#           this run, create the suite's catalog, and write the endpoints
+#           and credentials to $WORK/catalog.env as KEY=VALUE lines
+#   stop    stop both
+# $WORK and $CATALOG_PORT come from the runner.
+set -u
+here=$(cd "$(dirname "$0")/../.." && pwd) || exit 1
+case "${1:-}" in
+    start)
+        mkdir -p "$WORK/catalog" || exit 1
+        runtime_home=$("$here/catalogs/runtime") || exit 1
+        # The catalog's own development store.
+        (WORK="$WORK/catalog" STORE_PORT=$((CATALOG_PORT + 10)) "$here/stores/drivers/development-store" start) || exit 1
+        while IFS='=' read -r key value; do export "$key=$value"; done < "$WORK/catalog/store.env"
+        secret=$(od -An -N24 -tx1 /dev/urandom | tr -d ' \n')
+        JAVA_HOME=$runtime_home AWS_ACCESS_KEY_ID=$STORE_ACCESS AWS_SECRET_ACCESS_KEY=$STORE_SECRET AWS_REGION=us-east-1 POLARIS_BOOTSTRAP_CREDENTIALS="POLARIS,suite,$secret" POLARIS_JAVA_OPTS="-Dquarkus.http.port=$CATALOG_PORT -Dquarkus.management.port=$((CATALOG_PORT + 1)) -Dpolaris.persistence.type=in-memory" polaris > "$WORK/catalog/log" 2>&1 &  # name-ok
+        echo $! > "$WORK/catalog/pid"
+        url="http://127.0.0.1:$CATALOG_PORT"
+        for _ in $(seq 1 120); do
+            [ "$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:$((CATALOG_PORT + 1))/q/health/ready")" = 200 ] && break  # name-ok
+            sleep 0.5
+        done
+        printf 'CATALOG_URL=%s\nCATALOG_CLIENT=suite\nCATALOG_SECRET=%s\nCATALOG_NAME=suite\n' "$url" "$secret" > "$WORK/catalog.env"
+        cat "$WORK/catalog/store.env" >> "$WORK/catalog.env"
+        CATALOG_URL=$url CATALOG_CLIENT=suite CATALOG_SECRET=$secret
+        export CATALOG_URL CATALOG_CLIENT CATALOG_SECRET
+        body="{\"catalog\":{\"name\":\"suite\",\"type\":\"INTERNAL\",\"properties\":{\"default-base-location\":\"s3://$STORE_BUCKET/warehouse\"},\"storageConfigInfo\":{\"storageType\":\"S3\",\"allowedLocations\":[\"s3://$STORE_BUCKET/warehouse\"],\"endpoint\":\"$STORE_ENDPOINT\",\"pathStyleAccess\":true,\"stsUnavailable\":true}}}"  # name-ok
+        code=$("$here/catalogs/request" POST /api/management/v1/catalogs -d "$body")
+        [ "$code" = 201 ] || { echo "the catalog did not start or create the suite's catalog ($code); its log is $WORK/catalog/log"; exit 1; } ;;
+    stop)
+        if [ -f "$WORK/catalog/pid" ]; then
+            pid=$(cat "$WORK/catalog/pid")
+            running() { state=$(ps -o stat= -p "$pid" 2>/dev/null) && [ "${state#Z}" = "$state" ]; }
+            kill "$pid" 2>/dev/null
+            for _ in $(seq 1 20); do running || break; sleep 0.25; done
+            running && kill -9 "$pid" 2>/dev/null
+        fi
+        WORK="$WORK/catalog" "$here/stores/drivers/development-store" stop
+        exit 0 ;;
+    *)
+        echo "usage: conformance/catalogs/drivers/development-catalog start|stop" >&2; exit 2 ;;
+esac

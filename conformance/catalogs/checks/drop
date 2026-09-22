@@ -1,0 +1,11 @@
+#!/bin/sh
+# conformance/catalogs/checks/drop: a dropped table no longer loads
+# (roadmap R-139, R-111). Exits 0 when the catalog behaves so, 1 when it
+# does not.
+set -u
+r=conformance/catalogs/request
+c=/api/catalog/v1/$CATALOG_NAME
+[ "$("$r" POST "$c/namespaces" -d '{"namespace":["dropping"]}')" = 200 ] || { echo "creating a namespace was refused"; exit 1; }
+[ "$("$r" POST "$c/namespaces/dropping/tables" -d '{"name":"orders","schema":{"type":"struct","schema-id":0,"fields":[{"id":1,"name":"id","type":"long","required":true}]},"properties":{"format-version":"3"}}')" = 200 ] || { echo "creating a table was refused"; exit 1; }
+[ "$("$r" DELETE "$c/namespaces/dropping/tables/orders")" = 204 ] || { echo "dropping the table was refused"; exit 1; }
+[ "$("$r" GET "$c/namespaces/dropping/tables/orders")" = 404 ] || { echo "a dropped table still loads"; exit 1; }

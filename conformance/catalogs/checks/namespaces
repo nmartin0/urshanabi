@@ -1,0 +1,12 @@
+#!/bin/sh
+# conformance/catalogs/checks/namespaces: a created namespace is listed, and creating it twice is refused
+# (roadmap R-139, R-111). Exits 0 when the catalog behaves so, 1 when it
+# does not.
+set -u
+r=conformance/catalogs/request
+c=/api/catalog/v1/$CATALOG_NAME
+[ "$("$r" POST "$c/namespaces" -d '{"namespace":["twice"]}')" = 200 ] || { echo "creating a namespace was refused"; exit 1; }
+if ! { [ "$("$r" GET "$c/namespaces")" = 200 ] && grep -q '\["twice"\]' "$WORK/body"; }; then
+    echo "the namespace is not listed"; exit 1
+fi
+[ "$("$r" POST "$c/namespaces" -d '{"namespace":["twice"]}')" = 409 ] || { echo "creating it twice was not refused as a conflict"; exit 1; }

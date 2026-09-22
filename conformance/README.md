@@ -23,3 +23,10 @@ pass: every store in `stores/drivers/` is started by its driver, and
 every check in `stores/checks/` runs against it through the signing
 helper `stores/request`. Each run generates its own secret; none is
 committed.
+
+The table catalog's checks run in the same pass too: every catalog in
+`catalogs/drivers/` starts over its own development store, and every
+check in `catalogs/checks/` runs against it through `catalogs/request`.
+`catalogs/runtime` finds the runtime the catalog needs, version 21 or
+newer, wherever the machine keeps it.
+

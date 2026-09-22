@@ -1,7 +1,10 @@
 #!/bin/sh
 # script/bootstrap: install the pinned tools in script/tools.lock into
 # .tools/bin, refusing any download whose checksum does not match; then
-# run every component's own script/bootstrap.
+# run every component's own script/bootstrap. A lock entry's last field
+# names the file to install, or DIRECTORY:LAUNCHER for a tool that is a
+# whole directory: the directory goes to .tools/opt/TOOL, and
+# .tools/bin/TOOL runs its launcher.
 set -u
 cd "$(dirname "$0")/.." || exit 1
 
@@ -27,7 +30,29 @@ command -v curl >/dev/null 2>&1 || { echo "FAIL: curl is not installed"; exit 1;
 # redirect must stay on HTTPS, with TLS 1.2 or newer.
 fetch() { curl -sfL --proto '=https,file' --proto-redir '=https' --tlsv1.2 -o "$1" "$2"; }  # name-ok
 
-mkdir -p .tools/bin .tools/download || exit 1
+# wrap TOOL LAUNCHER: .tools/bin/TOOL runs the launcher by its real path,
+# since launchers often find their own files relative to it, which a
+# symbolic link would break.
+wrap() {
+    cat > ".tools/bin/$1" <<WRAPPER && chmod +x ".tools/bin/$1"
+#!/bin/sh
+exec "\$(dirname "\$0")/../opt/$1/$2" "\$@"
+WRAPPER
+}
+
+# place: move the unpacked tool into .tools, a file or a whole directory.
+place() {
+    if [ -n "$dir" ]; then
+        rm -rf ".tools/opt/$tool" ".tools/bin/$tool" &&
+            mv "$unpack/$dir" ".tools/opt/$tool" &&
+            chmod +x ".tools/opt/$tool/$launcher" &&
+            wrap "$tool" "$launcher"
+    else
+        mv "$unpack/$member" ".tools/bin/$tool" && chmod +x ".tools/bin/$tool"
+    fi
+}
+
+mkdir -p .tools/bin .tools/opt .tools/download || exit 1
 failed=""
 installed=0
 
@@ -51,13 +76,15 @@ while read -r tool version plat sum url member; do
     fi
     unpack=".tools/unpack-$tool"
     rm -rf "$unpack" && mkdir -p "$unpack" || exit 1
-    if ! tar -xf "$archive" -C "$unpack" || [ ! -f "$unpack/$member" ]; then
-        echo "FAIL $tool: could not unpack $member"; failed="$failed $tool"; continue
+    case "$member" in
+        *:*) dir=${member%%:*}; launcher=${member#*:}; wanted="$dir/$launcher" ;;
+        *)   dir=""; wanted=$member ;;
+    esac
+    if ! tar -xf "$archive" -C "$unpack" || [ ! -f "$unpack/$wanted" ]; then
+        echo "FAIL $tool: could not unpack $wanted"; failed="$failed $tool"; continue
     fi
-    if mv "$unpack/$member" ".tools/bin/$tool" &&
-       chmod +x ".tools/bin/$tool" &&
-       printf '%s\n' "$version" > ".tools/bin/$tool.version"; then
-        rm -rf "$unpack"
+    if place && printf '%s\n' "$version" > ".tools/bin/$tool.version"; then
+        rm -rf "$unpack" "$archive"
     else
         echo "FAIL $tool: could not install"; failed="$failed $tool"; continue
     fi

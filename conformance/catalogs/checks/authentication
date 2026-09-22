@@ -1,0 +1,9 @@
+#!/bin/sh
+# conformance/catalogs/checks/authentication: a request without a token, and a token asked for with a wrong secret, are refused
+# (roadmap R-139, R-111). Exits 0 when the catalog behaves so, 1 when it
+# does not.
+set -u
+c=/api/catalog/v1/$CATALOG_NAME
+[ "$(curl -s -o /dev/null -w '%{http_code}' "$CATALOG_URL$c/namespaces")" = 401 ] || { echo "a request without a token was not refused"; exit 1; }  # name-ok
+code=$(curl -s -o /dev/null -w '%{http_code}' "$CATALOG_URL/api/catalog/v1/oauth/tokens" -d grant_type=client_credentials -d "client_id=$CATALOG_CLIENT" -d client_secret=wrong -d scope=PRINCIPAL_ROLE:ALL)  # name-ok
+[ "$code" = 401 ] || { echo "a wrong secret was answered $code, not refused"; exit 1; }

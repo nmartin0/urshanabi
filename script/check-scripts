@@ -240,6 +240,35 @@ expect fail "a checksum mismatch is refused" "$t/script/bootstrap"
 if [ ! -e "$t/.tools/bin/fake" ]; then passed=$((passed + 1))
 else failed="$failed [nothing is installed on mismatch]"; echo "SELF-TEST FAILED: nothing is installed on mismatch"; fi
 
+# boot_dir NAME LAUNCHER CHECKSUM: a tool that is a whole directory.
+boot_dir() {
+    tree "$1" bootstrap each-component
+    mkdir -p "$t/.fixture/pkg/bin" "$t/.fixture/pkg/lib" "$t/contracts" && printf '# c\n' > "$t/contracts/README.md"
+    # Like real launchers, it finds its files relative to its own path.
+    cat > "$t/.fixture/pkg/bin/run" <<'LAUNCHER'
+#!/bin/sh
+cat "$(dirname "$0")/../lib/data"
+LAUNCHER
+    printf 'a library\n' > "$t/.fixture/pkg/lib/data"
+    tar -cf "$t/pkg.tar" -C "$t/.fixture" pkg
+    if command -v sha256sum >/dev/null 2>&1; then sum=$(sha256sum "$t/pkg.tar" | cut -d ' ' -f 1)
+    else sum=$(shasum -a 256 "$t/pkg.tar" | cut -d ' ' -f 1); fi
+    [ "$3" = wrong ] && sum=0000000000000000000000000000000000000000000000000000000000000000
+    for plat in linux-x86_64 linux-aarch64 darwin-x86_64 darwin-arm64; do  # name-ok
+        printf 'kit 1 %s %s file://%s/pkg.tar pkg:%s\n' "$plat" "$sum" "$t" "$2"
+    done > "$t/script/tools.lock"
+}
+boot_dir k3 bin/run right
+expect pass "a directory tool installs" "$t/script/bootstrap"
+if [ "$("$t/.tools/bin/kit" 2>/dev/null)" = "a library" ]; then passed=$((passed + 1))
+else failed="$failed [a directory tool's launcher finds its own files]"; echo "SELF-TEST FAILED: a directory tool's launcher finds its own files"; fi
+boot_dir k4 bin/missing right
+expect_msg fail "a directory tool without its launcher is refused" "could not unpack pkg/bin/missing" "$t/script/bootstrap"
+boot_dir k5 bin/run wrong
+expect fail "a directory tool's checksum mismatch is refused" "$t/script/bootstrap"
+if [ ! -e "$t/.tools/bin/kit" ] && [ ! -e "$t/.tools/opt/kit" ]; then passed=$((passed + 1))
+else failed="$failed [no directory is installed on mismatch]"; echo "SELF-TEST FAILED: no directory is installed on mismatch"; fi
+
 # --- contracts: breaking changes and guardrails (roadmap R-06) -----
 # commit_as_test MESSAGE: commit everything in the current repository.
 commit_as_test() {

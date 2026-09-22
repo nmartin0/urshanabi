@@ -1,0 +1,14 @@
+#!/bin/sh
+# conformance/catalogs/checks/version-3: a created table is in the format's third version, and its metadata is in the store
+# (roadmap R-139, R-111). Exits 0 when the catalog behaves so, 1 when it
+# does not.
+set -u
+r=conformance/catalogs/request
+c=/api/catalog/v1/$CATALOG_NAME
+[ "$("$r" POST "$c/namespaces" -d '{"namespace":["v3"]}')" = 200 ] || { echo "creating a namespace was refused"; exit 1; }
+[ "$("$r" POST "$c/namespaces/v3/tables" -d '{"name":"orders","schema":{"type":"struct","schema-id":0,"fields":[{"id":1,"name":"id","type":"long","required":true}]},"properties":{"format-version":"3"}}')" = 200 ] || { echo "creating a table was refused: $(head -c 200 "$WORK/body")"; exit 1; }
+grep -q '"format-version":3' "$WORK/body" || { echo "the table is not version 3"; exit 1; }
+grep -q '"next-row-id":' "$WORK/body" || { echo "the table has no row lineage"; exit 1; }
+file=$(sed -n 's/.*"metadata-location":"s3:\/\/[^\/]*\/\([^"]*\)".*/\1/p' "$WORK/body")  # name-ok
+[ -n "$file" ] || { echo "the table names no metadata file"; exit 1; }
+[ "$(conformance/stores/request HEAD "/$STORE_BUCKET/$file" -I)" = 200 ] || { echo "its metadata file is not in the store"; exit 1; }

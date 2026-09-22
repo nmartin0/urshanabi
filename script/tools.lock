@@ -32,3 +32,12 @@ seaweedfs 4.47 linux-x86_64 31fb804858885f9e7f18b6d3b1da09e824baac3e6a55b5a62c3c
 seaweedfs 4.47 linux-aarch64 ba5c9def9ff98f78becdf309a50a9f906922f6383a7c4c772d01ede3cc012e16 https://github.com/seaweedfs/seaweedfs/releases/download/4.47/linux_arm64.tar.gz weed
 seaweedfs 4.47 darwin-x86_64 45475223d51b78efb413cb7a29c005c7e9e0cc3f0dfe13d10413e7f85c479b6a https://github.com/seaweedfs/seaweedfs/releases/download/4.47/darwin_amd64.tar.gz weed
 seaweedfs 4.47 darwin-arm64 3ad466db33e83d0b103f90a06997feeb1cc42fd536e6cbdcdded975778f64fda https://github.com/seaweedfs/seaweedfs/releases/download/4.47/darwin_arm64.tar.gz weed
+# The table catalog: one archive for every platform, since it runs on a
+# virtual machine. Its SHA-256 matches the release page's digest and its
+# SHA-512 the published checksum; its signature (key F2EEEB06110BEE13
+# 97EC74CBB8960FF52D9B1312) was not checked, as the project publishes its
+# keys only on the foundation's download server.
+polaris 1.7.0 linux-x86_64 1ac7731d63e8024af1d9c2d9a62eb1157c7ae01e381f0ef85cde52d5f9b5a6da https://github.com/apache/polaris/releases/download/apache-polaris-1.7.0/polaris-bin-1.7.0.tgz polaris-bin-1.7.0:bin/server
+polaris 1.7.0 linux-aarch64 1ac7731d63e8024af1d9c2d9a62eb1157c7ae01e381f0ef85cde52d5f9b5a6da https://github.com/apache/polaris/releases/download/apache-polaris-1.7.0/polaris-bin-1.7.0.tgz polaris-bin-1.7.0:bin/server
+polaris 1.7.0 darwin-x86_64 1ac7731d63e8024af1d9c2d9a62eb1157c7ae01e381f0ef85cde52d5f9b5a6da https://github.com/apache/polaris/releases/download/apache-polaris-1.7.0/polaris-bin-1.7.0.tgz polaris-bin-1.7.0:bin/server
+polaris 1.7.0 darwin-arm64 1ac7731d63e8024af1d9c2d9a62eb1157c7ae01e381f0ef85cde52d5f9b5a6da https://github.com/apache/polaris/releases/download/apache-polaris-1.7.0/polaris-bin-1.7.0.tgz polaris-bin-1.7.0:bin/server

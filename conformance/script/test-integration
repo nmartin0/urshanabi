@@ -14,8 +14,9 @@ PORT=$((30000 + $$ % 20000))
 DRIVER="$PWD/conformance/drivers/urshanabi"
 export PATH WORK STACK PORT DRIVER
 STORE_PORT=$((PORT + 100))
-export STORE_PORT
-stop_stores() { for d in conformance/stores/drivers/*; do [ -x "$d" ] && "$d" stop; done; }
+CATALOG_PORT=$((PORT + 200))
+export STORE_PORT CATALOG_PORT
+stop_stores() { for d in conformance/stores/drivers/* conformance/catalogs/drivers/*; do [ -x "$d" ] && "$d" stop; done; }
 trap '"$DRIVER" stop; stop_stores; rm -rf "$WORK"' EXIT
 "$DRIVER" start || { echo "conformance: FAILED: the stack did not start"; exit 1; }
 
@@ -55,8 +56,26 @@ for d in conformance/stores/drivers/*; do
 done
 [ "$checks" -gt 0 ] || { echo "conformance: FAILED: no store checks ran"; exit 1; }
 
+# The table catalog's checks (R-139, R-111), each catalog over its own
+# development store.
+catalog_checks=0
+for d in conformance/catalogs/drivers/*; do
+    [ -x "$d" ] || continue
+    catalog=${d##*/}
+    if ! out=$("$d" start); then failed="$failed $catalog"; echo "  FAIL     $catalog: $out"; continue; fi
+    while IFS='=' read -r key value; do export "$key=$value"; done < "$WORK/catalog.env"
+    for c in conformance/catalogs/checks/*; do
+        [ -x "$c" ] || continue
+        out=$("$c"); rc=$?
+        if [ "$rc" -eq 0 ]; then catalog_checks=$((catalog_checks + 1)); echo "  pass     $catalog: ${c##*/}"
+        else failed="$failed $catalog:${c##*/}"; echo "  FAIL     $catalog: ${c##*/}: $out"; fi
+    done
+    "$d" stop
+done
+[ "$catalog_checks" -gt 0 ] || { echo "conformance: FAILED: no catalog checks ran"; exit 1; }
+
 if [ -n "$failed" ]; then
     echo "conformance: FAILED:$failed"
     exit 1
 fi
-echo "conformance: $passed properties hold, $pending pending; $checks store checks hold."
+echo "conformance: $passed properties hold, $pending pending; $checks store checks and $catalog_checks catalog checks hold."

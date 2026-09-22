@@ -1,0 +1,14 @@
+#!/bin/sh
+# conformance/catalogs/runtime: print the home of the runtime the table
+# catalog runs on, version 21 or newer. Machines often have several, with
+# an older one as the default, so every usual place is tried.
+set -u
+default=$(command -v java 2>/dev/null)  # name-ok
+[ -n "$default" ] && default=$(dirname "$(dirname "$default")")
+for home in "${JAVA_HOME:-}" "$default" "${JAVA_HOME_21_X64:-}" "${JAVA_HOME_21_ARM64:-}" "${JAVA_HOME_25_X64:-}" "${JAVA_HOME_25_ARM64:-}" /usr/lib/jvm/*; do  # name-ok
+    [ -x "$home/bin/java" ] || continue  # name-ok
+    major=$("$home/bin/java" -version 2>&1 | sed -n 's/.*version "\([0-9]*\).*/\1/p' | head -1)  # name-ok
+    [ -n "$major" ] && [ "$major" -ge 21 ] && { echo "$home"; exit 0; }
+done
+echo "no runtime of version 21 or newer is installed for the table catalog" >&2
+exit 1

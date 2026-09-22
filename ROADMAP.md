@@ -906,13 +906,14 @@ and lineage.
 - **Status:** in progress — the compatibility suite covers exact
   read-back, range reads, metadata, missing objects, paged listing,
   single and batch deletion, multipart upload and abort, and
-  authentication refusals; the development store, pinned and
-  checksum-verified, passes every check on every push, and every check
-  failed against a planted store that honours nothing
+  authentication refusals; the development store passes every check on
+  every push, and the table catalog runs over it; every check failed
+  against a planted store that honours nothing
   (`conformance/stores/checks/read-back`,
-  `conformance/stores/drivers/development-store`); remaining: drivers
-  for the self-hosted production store and cloud providers' stores, and
-  detecting a component that uses an operation outside the suite.
+  `conformance/catalogs/drivers/development-catalog`); remaining:
+  drivers for the self-hosted production store and cloud providers'
+  stores, and detecting a component that uses an operation outside the
+  suite.
 - **Outcome:** every component reads and writes objects only through
   the de facto standard object-storage interface, using none of any one
   store's own features, so changing stores is a mirroring job, not a
@@ -1009,7 +1010,11 @@ and lineage.
 ### R-111 Tables use the format's third version
 
 - **Class:** foundation
-- **Status:** planned
+- **Status:** in progress — a table the catalog creates reports
+  version 3, with row lineage, and its metadata is in the store, checked
+  on every push and seen to fail against a planted catalog that honours
+  nothing (`conformance/catalogs/checks/version-3`); remaining: an index
+  write carrying the row's last-updated sequence number.
 - **Outcome:** every table is created at the table format's third
   version: row lineage gives each row a permanent id and the sequence
   number of the change that last touched it, which becomes the index
