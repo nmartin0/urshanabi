@@ -331,3 +331,8 @@ s traefik
 s nginx
 s buildkit
 s buildah
+s cpython
+s flake8
+s pylint
+w pip
+w uv

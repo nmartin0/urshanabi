@@ -171,6 +171,7 @@ conflict (`RULES.md` E2).
 | Interface | Our own design system on accessible primitives | Ours (owner's decision) |
 | Service contracts | A schema-first binary interface language at its version 3 syntax, its standard RPC protocol between services, and that protocol's browser-compatible variant at the gateway, with portability guardrails | Steered by one company, the protocol hosted by a foundation; accepted with guardrails (owner's decision) |
 | Ontology authoring | TOML, parsed only by the shared ontology library | An open format (owner's decision) |
+| Agent and pipeline language | Version 3.14, built from its foundation's source and pinned exactly; its community's and foundation's own tools for packaging, formatting, linting, typing and auditing (R-10, R-127) | Foundation and community (owner's decision) |
 | Container orchestration | Any conformant orchestrator; a security-hardened, government-oriented distribution as reference and production, its lightweight sibling for development and CI | One company, contained by assuming only conformance (owner's decision) |
 
 The named register mapping each role to its product lives outside the

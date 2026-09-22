@@ -255,6 +255,12 @@ any commercial system needs, whatever its category.
 - **Learned from Elysium:** dependencies were bounded rather than
   locked until late, and a comment still says locking was deferred after
   lockfiles shipped. [measured]
+- **Decision:** the agent and pipeline language is pinned at version
+  3.14, built from its foundation's own source and cached, so CI and
+  every image use the exact release; a developer's existing interpreter
+  is accepted only when it is that exact version (owner, 2026-09-22).
+  Prebuilt interpreters are one company's, and a distribution's packaged
+  interpreter differs between machines.
 - **Done when:** editing a manifest without regenerating its lockfile
   fails CI.
 
@@ -777,6 +783,15 @@ any commercial system needs, whatever its category.
   lock-file check set a variable the script never read, so the script
   exited successfully while that gate failed. A test that deliberately
   breaks each gate would have caught it. [measured]
+- **Decision:** the agent and pipeline language's tools are the ones
+  its own community and foundation govern: the standard library's
+  environments and test runner, its packaging authority's installer with
+  the standardised lockfile and hash checking, the foundation's
+  formatter, the community organisation's linter, the reference type
+  checker in strict mode, and the packaging authority's vulnerability
+  auditor (owner, 2026-09-22). The faster alternatives are one
+  company's, bought by another in March 2026; they are development tools
+  only, so the choice costs seconds per run and no runtime speed at all.
 - **Done when:** a deliberate violation of each gate, in each language
   present, fails CI; a dependency without a recorded rung fails the
   build; a service importing another service's code fails
@@ -1167,6 +1182,11 @@ and lineage.
   give up user edits and multi-source objects. [precedent]
 - **Learned from Elysium:** single-process sync of whole tables.
   [docs]
+- **Decision:** streaming jobs are written in the stream processor's
+  own SQL, not in the agent and pipeline language, whose interface that
+  engine supports only up to version 3.12 (owner, 2026-09-22). SQL is
+  also the more portable form, and it frees every other component to run
+  the current language version.
 - **Done when:** a transform over data larger than one node's memory
   completes, and a streaming type accepts an edit.
 
