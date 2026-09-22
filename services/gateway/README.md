@@ -16,5 +16,7 @@ request an id that follows it into the query service and both logs.
 - `script/generate` generates the contract code, never committed.
 - `script/test` runs the services-language gates
   (`script/services-gates`).
+- `script/image` builds the container image from `Containerfile`: the
+  static binary alone, run unprivileged, the same for the same commit.
 - `script/test-integration` starts the real binary and requires a plain
   502, carrying the request id, when no query service answers.

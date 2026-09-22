@@ -1,0 +1,18 @@
+#!/bin/sh
+# services/gateway/script/image: build the gateway's container image
+# (roadmap R-135) from a static binary with no build machine's paths in
+# it, stamped with the commit's time rather than the build's, so the
+# same commit builds the same image. The cache is never used, so a
+# rebuild really reproduces the image. Prints the image's name.
+set -u
+cd "$(dirname "$0")/../../.." || exit 1
+PATH="$PWD/.tools/bin:$PATH"
+export PATH
+services/gateway/script/generate >&2 || exit 1
+stage=$(mktemp -d) || exit 1
+trap 'rm -rf "$stage"' EXIT
+CGO_ENABLED=0 go build -trimpath -o "$stage/gateway" ./services/gateway/cmd/gateway >&2 || exit 1  # name-ok
+cp services/gateway/Containerfile "$stage/" || exit 1
+image="localhost/urshanabi/gateway:$(git rev-parse HEAD)"  # name-ok
+podman build -q --no-cache --timestamp "$(git log -1 --format=%ct)" -t "$image" "$stage" >&2 || exit 1  # name-ok
+echo "$image"

@@ -19,5 +19,7 @@ hidden rows, and large results stream in columnar form.
   with warnings as errors, unit tests under UTC, São Paulo and New York
   (roadmap R-14), and the dependency policy in `deny.toml` (`RULES.md`
   E3).
+- `script/image` builds the container image from `Containerfile`: the
+  static binary alone, run unprivileged, the same for the same commit.
 - `script/test-integration` starts the real server and calls it over
   the network.

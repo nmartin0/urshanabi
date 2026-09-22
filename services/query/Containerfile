@@ -1,0 +1,10 @@
+# The query service's image: its static binary and nothing else -- no
+# shell, no package manager -- run as an unprivileged user (roadmap
+# R-120, R-135). script/image builds the binary with the pinned
+# toolchain, so the image has no base to trust or pin.
+FROM scratch
+COPY query /query
+USER 65532:65532
+ENV URSHANABI_LISTEN=0.0.0.0:50051
+EXPOSE 50051
+ENTRYPOINT ["/query"]

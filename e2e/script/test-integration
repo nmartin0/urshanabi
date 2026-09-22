@@ -1,50 +1,97 @@
 #!/bin/sh
 # e2e/script/test-integration: the walking skeleton's journey (roadmap
-# R-04, R-121). A request enters the gateway over HTTP, crosses to the
-# query service over the RPC protocol, and returns both builds. Both are
-# built from this commit, so both must report its revision and commit
-# time, and the request id must appear in both services' logs.
+# R-04, R-121, R-135), run twice: against the services' binaries, then
+# against their container images. A request enters the gateway over
+# HTTP, crosses to the query service over the RPC protocol, and returns
+# both builds. Built from this commit, both must report its revision and
+# commit time, and the request id must appear in both services' logs.
+# Each image must hold its binary alone, run unprivileged, and rebuild to
+# the same image.
 set -u
 cd "$(dirname "$0")/../.." || exit 1
 PATH="$PWD/.tools/bin:$PATH"
 export PATH
 work=$(mktemp -d) || exit 1
 pids=""
+containers=""
 cleanup() {
     for p in $pids; do kill "$p" 2>/dev/null; done
+    for c in $containers; do podman rm -f "$c" >/dev/null 2>&1; done  # name-ok
     rm -rf "$work"
 }
 trap cleanup EXIT
 fail() { echo "e2e: FAILED: $1"; for f in "$work"/*.log "$work/body"; do [ -f "$f" ] && { echo "--- $f"; cat "$f"; }; done; exit 1; }
 
-cargo build --locked -q -p query || fail "the query service does not build"  # name-ok
-services/gateway/script/generate || fail "the gateway's contract code does not generate"
-go build -o "$work/gateway" ./services/gateway/cmd/gateway || fail "the gateway does not build"  # name-ok
-
-base=$((20000 + $$ % 20000))
-query=127.0.0.1:$base
-gateway=127.0.0.1:$((base + 1))
-URSHANABI_LISTEN=$query target/debug/query 2> "$work/query.log" &
-pids="$pids $!"
-URSHANABI_LISTEN=$gateway URSHANABI_QUERY_ADDRESS=$query "$work/gateway" 2> "$work/gateway.log" &
-pids="$pids $!"
-for _ in $(seq 1 40); do
-    curl -s -o /dev/null "http://$gateway/" && grep -q listening "$work/query.log" && break  # name-ok
-    sleep 0.25
-done
-
-id="e2e-$$"
-code=$(curl -s -o "$work/body" -w '%{http_code}' -H "X-Request-Id: $id" "http://$gateway/v1/builds")  # name-ok
-[ "$code" = 200 ] || fail "the gateway answered $code"
-# The encoder varies its whitespace on purpose, so compare without it.
-body=$(tr -d ' \n' < "$work/body")
 revision=$(git rev-parse HEAD)  # name-ok
+committed=$(TZ=UTC git log -1 --format=%cd --date=format-local:%Y-%m-%dT%H:%M:%SZ)  # name-ok
 # Built from uncommitted changes, both services must say so.
 version=development
 [ -z "$(git status --porcelain)" ] || version=development+modified  # name-ok
-committed=$(TZ=UTC git log -1 --format=%cd --date=format-local:%Y-%m-%dT%H:%M:%SZ)  # name-ok
-expected="{\"builds\":[{\"component\":\"gateway\",\"version\":\"$version\",\"sourceRevision\":\"$revision\",\"sourceCommittedAt\":\"$committed\"},{\"component\":\"query\",\"version\":\"$version\",\"sourceRevision\":\"$revision\",\"sourceCommittedAt\":\"$committed\"}]}"
-[ "$body" = "$expected" ] || fail "unexpected builds: got $body, wanted $expected"
-grep -q "\"request_id\":\"$id\"" "$work/gateway.log" || fail "the gateway did not log the request id"
-grep -q "request_id=\"$id\"" "$work/query.log" || fail "the query service did not log the request id"
-echo "e2e: the walking skeleton's journey passed."
+base=$((20000 + $$ % 20000))
+
+# wait_for ADDRESS: until something answers HTTP there.
+wait_for() {
+    for _ in $(seq 1 40); do
+        curl -s -o /dev/null "http://$1/" && return 0  # name-ok
+        sleep 0.25
+    done
+    return 1
+}
+
+# journey NAME GATEWAY ID: request the builds and check the answer.
+journey() {
+    code=$(curl -s -o "$work/body" -w '%{http_code}' -H "X-Request-Id: $3" "http://$2/v1/builds")  # name-ok
+    [ "$code" = 200 ] || fail "$1: the gateway answered $code"
+    # The encoder varies its whitespace on purpose, so compare without it.
+    body=$(tr -d ' \n' < "$work/body")
+    one="\"version\":\"$version\",\"sourceRevision\":\"$revision\",\"sourceCommittedAt\":\"$committed\""
+    expected="{\"builds\":[{\"component\":\"gateway\",$one},{\"component\":\"query\",$one}]}"
+    [ "$body" = "$expected" ] || fail "$1: unexpected builds: got $body, wanted $expected"
+}
+
+# logged NAME ID GATEWAY-LOG QUERY-LOG: both services logged the id.
+logged() {
+    grep -q "\"request_id\":\"$2\"" "$3" || fail "$1: the gateway did not log the request id"
+    grep -q "request_id=\"$2\"" "$4" || fail "$1: the query service did not log the request id"
+}
+
+# --- the binaries ------------------------------------------------------
+cargo build --locked -q -p query || fail "the query service does not build"  # name-ok
+services/gateway/script/generate || fail "the gateway's contract code does not generate"
+go build -o "$work/gateway" ./services/gateway/cmd/gateway || fail "the gateway does not build"  # name-ok
+URSHANABI_LISTEN=127.0.0.1:$base "${CARGO_TARGET_DIR:-target}/debug/query" 2> "$work/query.log" &
+pids="$pids $!"
+URSHANABI_LISTEN=127.0.0.1:$((base + 1)) URSHANABI_QUERY_ADDRESS=127.0.0.1:$base "$work/gateway" 2> "$work/gateway.log" &
+pids="$pids $!"
+wait_for "127.0.0.1:$((base + 1))" || fail "the gateway binary did not start"
+journey binaries "127.0.0.1:$((base + 1))" "e2e-bin-$$"
+sleep 0.2
+logged binaries "e2e-bin-$$" "$work/gateway.log" "$work/query.log"
+
+# --- the container images ----------------------------------------------
+query_image=$(services/query/script/image) || fail "the query service's image does not build"
+gateway_image=$(services/gateway/script/image) || fail "the gateway's image does not build"
+for image in "$query_image" "$gateway_image"; do
+    name=${image#localhost/urshanabi/}; name=${name%%:*}
+    c=$(podman create "$image") || fail "$name: the image cannot be instantiated"  # name-ok
+    files=$(podman export "$c" | tar -t | tr '\n' ' ')  # name-ok
+    podman rm "$c" >/dev/null  # name-ok
+    [ "$files" = "$name " ] || fail "$name: the image holds more than its binary: $files"
+    user=$(podman image inspect "$image" --format '{{.Config.User}}')  # name-ok
+    case "$user" in ''|0|0:*|root|root:*) fail "$name: the image runs as root" ;; esac
+    id=$(podman image inspect "$image" --format '{{.Id}}')  # name-ok
+    again=$("services/$name/script/image") || fail "$name: the image does not rebuild"
+    [ "$(podman image inspect "$again" --format '{{.Id}}')" = "$id" ] || fail "$name: rebuilding the same commit gave a different image"  # name-ok
+done
+cq="e2e-query-$$"; cg="e2e-gateway-$$"
+podman run -d --network=host --name "$cq" -e URSHANABI_LISTEN=127.0.0.1:$((base + 2)) "$query_image" >/dev/null || fail "the query image does not run"  # name-ok
+containers="$containers $cq"
+podman run -d --network=host --name "$cg" -e URSHANABI_LISTEN=127.0.0.1:$((base + 3)) -e URSHANABI_QUERY_ADDRESS=127.0.0.1:$((base + 2)) "$gateway_image" >/dev/null || fail "the gateway image does not run"  # name-ok
+containers="$containers $cg"
+wait_for "127.0.0.1:$((base + 3))" || fail "the gateway container did not start"
+journey containers "127.0.0.1:$((base + 3))" "e2e-img-$$"
+sleep 0.2
+podman logs "$cg" > "$work/gateway-container.log" 2>&1  # name-ok
+podman logs "$cq" > "$work/query-container.log" 2>&1  # name-ok
+logged containers "e2e-img-$$" "$work/gateway-container.log" "$work/query-container.log"
+echo "e2e: the walking skeleton's journey passed, as binaries and as containers."

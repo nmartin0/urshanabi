@@ -104,8 +104,9 @@ any commercial system needs, whatever its category.
 - **Class:** foundation
 - **Status:** in progress — the gateway's tests mock the query
   service, and the walking skeleton's journey drives the real one
-  through its real entry point (`e2e/script/test-integration`);
-  remaining: the same for every handler mocked from now on.
+  through its real entry point, as binaries and as container images
+  (`e2e/script/test-integration`); remaining: the same for every handler
+  mocked from now on.
 - **Outcome:** every handler a test mocks has one test driving the
   real one through its real entry point.
 - **Learned from Elysium:** three shipped commits crashed on a user's
@@ -275,7 +276,15 @@ any commercial system needs, whatever its category.
 ### R-135 Every service ships as a verifiable container image
 
 - **Class:** foundation
-- **Status:** planned
+- **Status:** in progress — both services build into images holding
+  their static binary alone, on no base, run unprivileged, stamped with
+  the commit's time; the journey proves each holds one file, runs as a
+  non-root user, and rebuilds without the cache to the same image, and
+  each check was seen to fail on a planted fault
+  (`services/query/Containerfile`, `services/gateway/Containerfile`,
+  `e2e/script/test-integration`); remaining: a bill of materials and
+  signature for every image, publication to the transparency log, and a
+  cluster that refuses an image lacking them.
 - **Outcome:** each service's container build lives in its own
   directory (`RULES.md` E2) and produces an image in the open container
   image format: built in stages, on a minimal base pinned by digest,
@@ -1614,7 +1623,11 @@ then audit and operations.
 ### R-120 Stateless work and no privileged runtime access
 
 - **Class:** foundation
-- **Status:** planned
+- **Status:** in progress — both production images contain their
+  binary alone, with no shell or debugging tool, and the journey fails
+  if one gains a file (`e2e/script/test-integration`); remaining: the
+  memory scan proving no plaintext survives a request, and the reviewed
+  channels operators observe through.
 - **Outcome:** services keep no customer plaintext once a request
   completes, and production workloads have no shell, debugger or
   administrative path; operators observe them only through reviewed,

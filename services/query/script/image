@@ -1,0 +1,19 @@
+#!/bin/sh
+# services/query/script/image: build the query service's container image
+# (roadmap R-135) from a static binary with no build machine's paths in
+# it, stamped with the commit's time rather than the build's, so the
+# same commit builds the same image. The cache is never used, so a
+# rebuild really reproduces the image. Prints the image's name.
+set -u
+cd "$(dirname "$0")/../../.." || exit 1
+PATH="$PWD/.tools/bin:$PATH"
+export PATH
+host=$(rustc -vV | awk '/^host/ { print $2 }')  # name-ok
+flags="-C target-feature=+crt-static --remap-path-prefix=$PWD=/source --remap-path-prefix=${CARGO_HOME:-$HOME/.cargo}=/cargo"  # name-ok
+RUSTFLAGS=$flags cargo build -q --release --locked -p query --target "$host" >&2 || exit 1  # name-ok
+stage=$(mktemp -d) || exit 1
+trap 'rm -rf "$stage"' EXIT
+cp "${CARGO_TARGET_DIR:-target}/$host/release/query" services/query/Containerfile "$stage/" || exit 1
+image="localhost/urshanabi/query:$(git rev-parse HEAD)"  # name-ok
+podman build -q --no-cache --timestamp "$(git log -1 --format=%ct)" -t "$image" "$stage" >&2 || exit 1  # name-ok
+echo "$image"

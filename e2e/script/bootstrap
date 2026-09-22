@@ -1,6 +1,11 @@
 #!/bin/sh
-# e2e/script/bootstrap: the journeys build every service, so they need
-# both service toolchains.
+# e2e/script/bootstrap: the journeys build every service and run their
+# images, so they need both service toolchains and a container engine.
 set -u
 cd "$(dirname "$0")/../.." || exit 1
-script/systems-toolchain && script/services-toolchain
+script/systems-toolchain && script/services-toolchain || exit 1
+if ! command -v podman >/dev/null 2>&1; then  # name-ok
+    echo "FAIL: the journeys run the services' images, and no container engine is installed"
+    exit 1
+fi
+echo "e2e: container engine present."
