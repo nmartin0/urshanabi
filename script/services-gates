@@ -2,7 +2,10 @@
 # script/services-gates DIR: the services-language gates for the component
 # in DIR (RULES.md E3), shared so every component runs the same ones: code
 # generation; formatting; vet; tests under the race detector, in UTC, a
-# zone behind it and a zone observing daylight saving (roadmap R-14); and
+# zone behind it and a zone observing daylight saving (roadmap R-14);
+# dead code -- no function unreachable from the program (R-33); known
+# vulnerabilities in code the program calls, from the official database
+# or the one URSHANABI_VULNDB names, as a disconnected site needs; and
 # the modules gate -- every module matches its recorded hash, and the
 # module manifest and its lockfile are tidy (R-10).
 set -u
@@ -30,6 +33,12 @@ run vet go vet "./$dir/..."  # name-ok
 for zone in UTC America/Sao_Paulo America/New_York; do
     run "tests-$zone" env TZ="$zone" go test -race -count=1 "./$dir/..."  # name-ok
 done
+unreachable() {
+    out=$(deadcode "./$dir/...") || return 1
+    [ -z "$out" ] || { echo "$out"; return 1; }
+}
+run dead-code unreachable
+run vulnerabilities govulncheck ${URSHANABI_VULNDB:+-db "$URSHANABI_VULNDB"} "./$dir/..."  # name-ok
 run modules sh -c 'go mod verify && go mod tidy -diff'  # name-ok
 if [ -n "$failed" ]; then
     echo "$name: FAILED:$failed"

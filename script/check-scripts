@@ -480,6 +480,48 @@ expect_msg fail "code naming a definition file fails" "names an ontology definit
 
 
 # --- the services-language gates (R-127): each fails on a planted fault
+# A helper that writes a module zip, with only the standard library.
+cat > "$base/mkzip.go" <<'GOSRC'  # name-ok
+// mkzip writes a module zip: mkzip DIR MODULE@VERSION OUT.
+package main
+
+import (
+	"archive/zip"
+	"os"
+	"path/filepath"
+)
+
+func main() {
+	dir, prefix, out := os.Args[1], os.Args[2]+"/", os.Args[3]
+	f, err := os.Create(out)
+	if err != nil {
+		panic(err)
+	}
+	z := zip.NewWriter(f)
+	err = filepath.WalkDir(dir, func(p string, e os.DirEntry, err error) error {
+		if err != nil || e.IsDir() {
+			return err
+		}
+		rel, _ := filepath.Rel(dir, p)
+		w, err := z.Create(prefix + filepath.ToSlash(rel))
+		if err != nil {
+			return err
+		}
+		b, err := os.ReadFile(p)
+		if err != nil {
+			return err
+		}
+		_, err = w.Write(b)
+		return err
+	})
+	if err != nil {
+		panic(err)
+	}
+	if err := z.Close(); err != nil {
+		panic(err)
+	}
+}
+GOSRC
 # The real component script, run against a dependency-free module.
 svcmod() {  # svcmod NAME: a one-package module with the gateway's gates
     tree "$1" services-gates
@@ -488,6 +530,34 @@ svcmod() {  # svcmod NAME: a one-package module with the gateway's gates
     printf 'module urshanabi\n\ngo 1.27\n' > "$t/go.mod"  # name-ok
     printf 'package fixture\n\n// Double doubles a number.\nfunc Double(n int) int {\n\treturn n * 2\n}\n' > "$t/services/gateway/fixture/fixture.go"  # name-ok
     printf 'package fixture\n\nimport "testing"\n\nfunc TestDouble(t *testing.T) {\n\tif Double(2) != 4 {\n\t\tt.Fatal("wrong")\n\t}\n}\n' > "$t/services/gateway/fixture/fixture_test.go"  # name-ok
+    # A program, so dead code has something to be unreachable from.
+    mkdir -p "$t/services/gateway/cmd/fixture" "$t/.tools/bin" "$t/vulndb/index" "$t/vulndb/ID"
+    printf 'package main\n\nimport "urshanabi/services/gateway/fixture"\n\nfunc main() { _ = fixture.Double(1) }\n' > "$t/services/gateway/cmd/fixture/main.go"  # name-ok
+    for tool in deadcode govulncheck; do ln -s "$repo/.tools/bin/$tool" "$t/.tools/bin/$tool"; done  # name-ok
+    # An empty vulnerability database, so the gate never needs the network.
+    printf '{"modified":"2026-01-01T00:00:00Z"}' > "$t/vulndb/index/db.json"
+    printf '[]' > "$t/vulndb/index/modules.json"
+    URSHANABI_VULNDB="file://$t/vulndb"
+    export URSHANABI_VULNDB
+}
+# vulnerable NAME CALL: a fixture requiring a module with one planted
+# vulnerability, in its function Bad, served at a real version from a
+# fixture proxy; the program calls CALL, Bad or Good.
+vulnerable() {
+    svcmod "$1"
+    m="$t/fake"; p="$t/proxy/example.com/vulnerable/@v"
+    mkdir -p "$m" "$p"
+    printf 'module example.com/vulnerable\n\ngo 1.27\n' > "$m/go.mod"  # name-ok
+    printf 'package vulnerable\n\n// Bad is vulnerable.\nfunc Bad() int { return 1 }\n\n// Good is not.\nfunc Good() int { return 2 }\n' > "$m/v.go"  # name-ok
+    (cd "$base" && go run "$base/mkzip.go" "$m" example.com/vulnerable@v1.0.0 "$p/v1.0.0.zip") || exit 1  # name-ok
+    cp "$m/go.mod" "$p/v1.0.0.mod"  # name-ok
+    printf '{"Version":"v1.0.0","Time":"2026-01-01T00:00:00Z"}' > "$p/v1.0.0.info"
+    printf 'v1.0.0\n' > "$p/list"
+    printf '[{"path":"example.com/vulnerable","vulns":[{"id":"GO-2026-0001","modified":"2026-01-01T00:00:00Z","fixed":"1.0.1"}]}]' > "$t/vulndb/index/modules.json"  # name-ok
+    printf '{"schema_version":"1.3.1","id":"GO-2026-0001","modified":"2026-01-01T00:00:00Z","published":"2026-01-01T00:00:00Z","summary":"A planted vulnerability","details":"For the gate self-test.","affected":[{"package":{"name":"example.com/vulnerable","ecosystem":"Go"},"ranges":[{"type":"SEMVER","events":[{"introduced":"0"},{"fixed":"1.0.1"}]}],"ecosystem_specific":{"imports":[{"path":"example.com/vulnerable","symbols":["Bad"]}]}}]}' > "$t/vulndb/ID/GO-2026-0001.json"  # name-ok
+    printf 'package main\n\nimport (\n\t"example.com/vulnerable"\n\n\t"urshanabi/services/gateway/fixture"\n)\n\nfunc main() { _ = fixture.Double(vulnerable.%s()) }\n' "$2" > "$t/services/gateway/cmd/fixture/main.go"  # name-ok
+    printf '\nrequire example.com/vulnerable v1.0.0\n' >> "$t/go.mod"  # name-ok
+    (cd "$t" && env GOPROXY="file://$t/proxy" GOSUMDB=off GOFLAGS=-mod=mod go mod tidy) || exit 1  # name-ok
 }
 svcmod g1
 expect pass "a clean module passes every services-language gate" "$t/services/gateway/script/test"
@@ -501,6 +571,13 @@ svcmod g5; printf 'package fixture\n\nimport (\n\t"testing"\n\t"time"\n)\n\nfunc
 expect_msg fail "a local-time read fails under both non-UTC zones, and only them" "FAILED: tests-America/Sao_Paulo tests-America/New_York$" "$t/services/gateway/script/test"
 svcmod g6; printf '\nrequire example.com/unused v1.0.0\n' >> "$t/go.mod"  # name-ok
 expect_msg fail "an untidy module manifest fails the modules gate" "FAILED: modules" "$t/services/gateway/script/test"
+svcmod g7; printf '\n// Unused is called by nothing.\nfunc Unused() int {\n\treturn 0\n}\n' >> "$t/services/gateway/fixture/fixture.go"  # name-ok
+expect_msg fail "an unreachable function fails the dead-code gate" "FAILED: dead-code" "$t/services/gateway/script/test"
+vulnerable g8 Bad
+expect_msg fail "calling a vulnerable function fails the vulnerabilities gate" "FAILED: vulnerabilities" env GOPROXY="file://$t/proxy" GOSUMDB=off "$t/services/gateway/script/test"  # name-ok
+vulnerable g9 Good
+expect pass "a vulnerable module whose flaw is never called passes" env GOPROXY="file://$t/proxy" GOSUMDB=off "$t/services/gateway/script/test"  # name-ok
+unset URSHANABI_VULNDB
 
 
 # --- check-generated: generated state is never tracked (R-11) ---------

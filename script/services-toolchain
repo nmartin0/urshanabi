@@ -10,5 +10,10 @@ if ! command -v go >/dev/null 2>&1; then  # name-ok
     exit 1
 fi
 go version || exit 1  # name-ok
+# The gates' own tools, built at the versions the module manifest pins.
+mkdir -p .tools/bin || exit 1
+for tool in golang.org/x/tools/cmd/deadcode golang.org/x/vuln/cmd/govulncheck; do  # name-ok
+    go build -o ".tools/bin/${tool##*/}" "$tool" || { echo "FAIL: cannot build ${tool##*/}"; exit 1; }  # name-ok
+done
 [ -x .tools/bin/buf ] || { echo "FAIL: the contract toolchain is missing; run script/bootstrap"; exit 1; }  # name-ok
 echo "services-language toolchain present."

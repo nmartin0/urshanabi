@@ -477,7 +477,11 @@ any commercial system needs, whatever its category.
 ### R-33 Nothing built that nothing uses
 
 - **Class:** foundation
-- **Status:** planned
+- **Status:** in progress — the services language's gates refuse any
+  function unreachable from the program, and the systems language's
+  compiler refuses unused private code, each seen to fail on a planted
+  fault (`script/services-gates`, `script/systems-gates`); remaining: a
+  check that fails on an uncalled public component.
 - **Outcome:** a component ships with its caller, or not at all.
 - **Learned from Elysium:** a memory guard was built and tested but
   never wired into the agent. [code]
@@ -736,10 +740,11 @@ any commercial system needs, whatever its category.
 - **Status:** in progress — repository gates, boundaries and the
   scripts' own tests run in CI, and the systems and services languages'
   gates run on their first components, each broken on purpose by a
-  self-test (`script/check-scripts`, `script/systems-gates`,
-  `script/services-gates`); remaining: the other two languages' gates,
-  vulnerability and licence gates for the services language, and the
-  dependency-rung check.
+  self-test; the services language now also refuses unreachable
+  functions and known vulnerabilities in code the program calls
+  (`script/check-scripts`, `script/systems-gates`,
+  `script/services-gates`); remaining: the other two languages' gates, a
+  licence gate for the services language, and the dependency-rung check.
 - **Outcome:** `RULES.md` part three is enforced in CI from the first
   commit: every dependency records its rung on the standard-library
   ladder (E1); every component is its own project, with dependencies
