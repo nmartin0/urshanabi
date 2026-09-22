@@ -19,6 +19,8 @@ script/cibuild    # exactly what CI runs: bootstrap, test, test-integration
   in that language so none can drift.
 - `services-gates DIR` and `services-toolchain` — the same for the
   services language.
+- `server` — builds every service's image and runs the whole local
+  stack with one command; `server stop` removes it (R-12).
 - `report-tool-updates` — reports any pinned tool with a newer release;
   run weekly by its own workflow, never by `test`, so a new upstream
   release cannot fail anyone's push.
@@ -42,6 +44,8 @@ Repository checks, each runnable on its own:
   unit and a roadmap item; a tested one cites its load test (R-66).
 - `check-ontology-parsers` — only `libs/ontology` parses ontology
   definitions (R-51).
+- `check-generated` — every generator runs and leaves version control
+  seeing no change (R-11).
 - `check-scripts` — the scripts' own tests: every gate is broken on
   purpose and must fail (R-127).
 

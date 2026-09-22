@@ -502,6 +502,22 @@ expect_msg fail "a local-time read fails under both non-UTC zones, and only them
 svcmod g6; printf '\nrequire example.com/unused v1.0.0\n' >> "$t/go.mod"  # name-ok
 expect_msg fail "an untidy module manifest fails the modules gate" "FAILED: modules" "$t/services/gateway/script/test"
 
+
+# --- check-generated: generated state is never tracked (R-11) ---------
+generated() {  # generated NAME DIR: a component whose generator writes into DIR
+    tree "$1" check-generated
+    mkdir -p "$t/services/x/script"
+    printf '/target/\n/services/x/gen/\n' > "$t/.gitignore"
+    printf '#!/bin/sh\nmkdir -p %s && echo made > %s/file\n' "$t/services/x/$2" "$t/services/x/$2" > "$t/services/x/script/generate"
+    chmod +x "$t/services/x/script/generate"
+}
+generated e1 gen
+expect pass "a generator writing only ignored paths passes" "$t/script/check-generated"
+generated e2 made
+expect_msg fail "a generator writing an unignored file fails" "services/x/made/" "$t/script/check-generated"
+generated e3 gen; printf '/services/x/gen/\n' > "$t/.gitignore"
+expect_msg fail "an unignored build directory fails" "target, is not ignored" "$t/script/check-generated"
+
 # Guard: a self-test whose helper is missing or misspelled fails with
 # "not found" and records nothing. Count the calls written in this file
 # and require that every one ran.

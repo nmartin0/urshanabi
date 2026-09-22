@@ -1,0 +1,29 @@
+#!/bin/sh
+# script/check-generated: generated state is never tracked (roadmap R-11).
+# Runs every component's script/generate and requires the repository's
+# status to be exactly what it was before, every untracked file listed
+# on its own, so a generator writing anywhere the ignore rules do not
+# cover fails, even inside a directory that is itself untracked. The systems language
+# generates into its build directory, which must be ignored too.
+set -u
+cd "$(dirname "$0")/.." || exit 1
+PATH="$PWD/.tools/bin:$PATH"
+export PATH
+git check-ignore -q target/ || { echo "FAIL: the systems language's build directory, target, is not ignored"; exit 1; }  # name-ok
+before=$(git status --porcelain --untracked-files=all) || exit 1  # name-ok
+ran=0
+for gen in */script/generate */*/script/generate; do
+    [ -x "$gen" ] || continue
+    ran=$((ran + 1))
+    "$gen" > /dev/null || { echo "FAIL: $gen failed"; exit 1; }
+done
+after=$(git status --porcelain --untracked-files=all)  # name-ok
+if [ "$before" != "$after" ]; then
+    echo "FAIL: generating changed what version control sees:"
+    was=$(mktemp) || exit 1
+    printf '%s\n' "$before" > "$was"
+    printf '%s\n' "$after" | diff "$was" - | sed -n 's/^> /    /p'
+    rm -f "$was"
+    exit 1
+fi
+echo "check-generated: $ran generators ran; version control sees no change."

@@ -1,0 +1,39 @@
+#!/bin/sh
+# script/server: build every service's image and run the whole local
+# stack with one command (roadmap R-12). Running it again replaces the
+# running stack, so after a reboot one command restores it.
+# "script/server stop" removes the stack.
+#
+#   URSHANABI_STACK       container name prefix (default: urshanabi)
+#   URSHANABI_PORT        where the gateway answers (default: 8080)
+#   URSHANABI_QUERY_PORT  where the query service answers (default: 50051)
+set -u
+cd "$(dirname "$0")/.." || exit 1
+PATH="$PWD/.tools/bin:$PATH"
+export PATH
+stack=${URSHANABI_STACK:-urshanabi}
+port=${URSHANABI_PORT:-8080}
+query_port=${URSHANABI_QUERY_PORT:-50051}
+
+if [ "${1:-}" = stop ]; then
+    podman rm -f "$stack-gateway" "$stack-query" >/dev/null 2>&1  # name-ok
+    echo "server: $stack stopped."
+    exit 0
+fi
+
+query_image=$(services/query/script/image) || { echo "server: the query service's image does not build"; exit 1; }
+gateway_image=$(services/gateway/script/image) || { echo "server: the gateway's image does not build"; exit 1; }
+# start NAME IMAGE ENV...: run one service, replacing any running copy.
+start() { name=$1; image=$2; shift 2; podman run -d --replace --name "$name" --network=host "$@" "$image" >/dev/null; }  # name-ok
+start "$stack-query" "$query_image" -e "URSHANABI_LISTEN=127.0.0.1:$query_port" || exit 1
+start "$stack-gateway" "$gateway_image" -e "URSHANABI_LISTEN=127.0.0.1:$port" \
+    -e "URSHANABI_QUERY_ADDRESS=127.0.0.1:$query_port" || exit 1
+for _ in $(seq 1 40); do
+    if curl -s -o /dev/null "http://127.0.0.1:$port/"; then  # name-ok
+        echo "server: $stack is running: http://127.0.0.1:$port/v1/builds"
+        exit 0
+    fi
+    sleep 0.25
+done
+echo "server: $stack did not start; see: podman logs $stack-gateway"  # name-ok
+exit 1

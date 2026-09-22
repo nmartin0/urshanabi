@@ -6,7 +6,7 @@
 # both builds. Built from this commit, both must report its revision and
 # commit time, and the request id must appear in both services' logs.
 # Each image must hold its binary alone, run unprivileged, and rebuild to
-# the same image.
+# the same image, and the stack must restore with one command (R-12).
 set -u
 cd "$(dirname "$0")/../.." || exit 1
 PATH="$PWD/.tools/bin:$PATH"
@@ -83,12 +83,16 @@ for image in "$query_image" "$gateway_image"; do
     again=$("services/$name/script/image") || fail "$name: the image does not rebuild"
     [ "$(podman image inspect "$again" --format '{{.Id}}')" = "$id" ] || fail "$name: rebuilding the same commit gave a different image"  # name-ok
 done
-cq="e2e-query-$$"; cg="e2e-gateway-$$"
-podman run -d --network=host --name "$cq" -e URSHANABI_LISTEN=127.0.0.1:$((base + 2)) "$query_image" >/dev/null || fail "the query image does not run"  # name-ok
-containers="$containers $cq"
-podman run -d --network=host --name "$cg" -e URSHANABI_LISTEN=127.0.0.1:$((base + 3)) -e URSHANABI_QUERY_ADDRESS=127.0.0.1:$((base + 2)) "$gateway_image" >/dev/null || fail "the gateway image does not run"  # name-ok
-containers="$containers $cg"
-wait_for "127.0.0.1:$((base + 3))" || fail "the gateway container did not start"
+# The whole stack through script/server, stopped and restored with the one
+# command, as after a reboot (R-12).
+stack="e2e-$$"
+containers="$containers $stack-query $stack-gateway"
+serve() { URSHANABI_STACK=$stack URSHANABI_PORT=$((base + 3)) URSHANABI_QUERY_PORT=$((base + 2)) script/server; }
+serve > /dev/null || fail "script/server did not start the stack"
+URSHANABI_STACK=$stack script/server stop > /dev/null || fail "script/server did not stop the stack"
+! curl -s -o /dev/null "http://127.0.0.1:$((base + 3))/" || fail "the stack still answers after script/server stop"  # name-ok
+serve > /dev/null || fail "script/server did not restore the stack"
+cg="$stack-gateway"; cq="$stack-query"
 journey containers "127.0.0.1:$((base + 3))" "e2e-img-$$"
 sleep 0.2
 podman logs "$cg" > "$work/gateway-container.log" 2>&1  # name-ok

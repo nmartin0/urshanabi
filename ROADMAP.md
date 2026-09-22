@@ -251,9 +251,11 @@ any commercial system needs, whatever its category.
 ### R-11 Generated state is never tracked
 
 - **Class:** foundation
-- **Status:** in progress — contract code is generated at build time
-  and never committed (`services/query/build.rs`); remaining: a check
-  that runs every generator and fails unless the tree stays clean.
+- **Status:** done — every component's generator runs on every push,
+  and the check fails unless version control then sees exactly what it
+  saw before, every untracked file listed on its own; the systems
+  language's build directory must be ignored too
+  (`script/check-generated`).
 - **Outcome:** ignore rules cover every generated path before the
   first generator exists.
 - **Learned from Elysium:** generated databases and lake files were
@@ -265,7 +267,12 @@ any commercial system needs, whatever its category.
 ### R-12 A development environment that survives a reboot
 
 - **Class:** foundation
-- **Status:** planned
+- **Status:** in progress — one command builds both services' images
+  and runs the stack, replacing any running copy; the journey stops the
+  stack, confirms it is down, restores it with the one command and
+  requires the full answer (`script/server`,
+  `e2e/script/test-integration`); remaining: each store's data under the
+  user's own directory, as stores arrive.
 - **Outcome:** one command builds the whole local stack, with data
   under the user's own directory.
 - **Learned from Elysium:** development data lived in a directory

@@ -46,8 +46,9 @@ same pinned versions (`script/README.md`).
 ## Status
 
 Phase 0 is under way. The repository checks and CI run on every push,
-and the walking skeleton runs end to end: a request crosses from the
-gateway to the query service and back. Every roadmap item's status says
+and the walking skeleton is complete: a request crosses from the
+gateway to the query service and back, as binaries and as container
+images, and `script/server` runs the whole stack with one command. Every roadmap item's status says
 what is done and what remains.
 
 ## Licence
