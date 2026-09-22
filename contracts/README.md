@@ -50,3 +50,11 @@ Its reason and safe arguments may be logged; its unsafe arguments, and
 the error's free-text message, never are, since either could echo
 customer data (roadmap R-06). An error without a detail is taken to come
 from the transport itself.
+
+`expectations/` holds what each consumer relies on from each producer,
+one file per pair (roadmap R-78). A producer's own build reads every
+file naming it, calls its real service and checks each expectation, so
+breaking a consumer fails the producer's build rather than some later
+integration run. A consumer's build checks the other direction: a field
+it reads but has not recorded fails its tests.
+

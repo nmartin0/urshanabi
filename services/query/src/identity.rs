@@ -1,7 +1,7 @@
 //! This build's identity, recorded by the build script (roadmap R-121).
 
-use crate::libs::wire::Timestamp;
-use crate::proto::build::BuildInfo;
+use crate::build::BuildInfo;
+use crate::wire::Timestamp;
 
 /// The component's directory name.
 pub const COMPONENT: &str = "query";

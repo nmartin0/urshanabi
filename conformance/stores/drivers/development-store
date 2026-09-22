@@ -3,7 +3,8 @@
 # development and CI use (roadmap R-139). It keeps a fixed 100 MiB of disk
 # free, not the default one per cent of the disk's size, which on a large
 # disk can exceed what is free and turn every volume read-only.
-#   start   run it with one identity whose secret is generated for this
+#   start   run it, waiting up to a minute for it to answer, with one
+#           identity whose secret is generated for this
 #           run, create the suite's bucket, and write the endpoint and
 #           credentials to $WORK/store.env as KEY=VALUE lines
 #   stop    stop it
@@ -19,12 +20,14 @@ case "${1:-}" in
         printf 'STORE_ENDPOINT=http://127.0.0.1:%s\nSTORE_ACCESS=suite\nSTORE_SECRET=%s\nSTORE_BUCKET=suite\n' "$STORE_PORT" "$secret" > "$WORK/store.env"
         # Ready when the store creates the suite's bucket for a signed request.
         scheme="aws:amz:us-east-1:s3"  # name-ok
-        for _ in $(seq 1 80); do
+        for _ in $(seq 1 240); do
             code=$(curl -s -o /dev/null -w '%{http_code}' -X PUT --aws-sigv4 "$scheme" --user "suite:$secret" "http://127.0.0.1:$STORE_PORT/suite")  # name-ok
             [ "$code" = 200 ] && exit 0
             sleep 0.25
         done
-        echo "the development store did not start; its log is $WORK/store/log"; exit 1 ;;
+        echo "the development store did not start in a minute; it last said:"
+        tail -3 "$WORK/store/log" 2>/dev/null
+        exit 1 ;;
     stop)
         # Ask it to stop, and force it after two seconds: the store is thrown
         # away after each run, so a slow graceful shutdown protects nothing.

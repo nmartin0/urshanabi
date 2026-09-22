@@ -1,7 +1,6 @@
 //! The libraries the service is built on, each named once and used by
 //! its role everywhere else (`RULES.md` H1).
 
-pub use prost_types as wire; // name-ok
 pub use tokio as runtime; // name-ok
 pub use tonic as rpc; // name-ok
 pub use tracing as log;

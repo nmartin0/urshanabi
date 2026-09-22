@@ -61,6 +61,13 @@ fn generate_contracts(root: &Path) {
     let set = FileDescriptorSet::decode(bytes.as_slice())
         .expect("the contract toolchain writes a valid descriptor set");
     generator::configure()
+        // The contract's messages can be written as JSON, so the
+        // producer can check itself against a consumer's recorded
+        // expectations (roadmap R-78).
+        .type_attribute(".", "#[derive(serde::Serialize)]") // name-ok
+        // Including the contract language's own well-known types, so
+        // every message in an answer carries that capability.
+        .compile_well_known_types(true)
         .compile_fds(set)
         .expect("code generation from the contracts");
 

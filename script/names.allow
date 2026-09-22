@@ -5,3 +5,5 @@ cargo.toml
 cargo.lock
 rust-toolchain.toml
 .go`
+pub mod google
+pub mod protobuf

@@ -29,7 +29,11 @@ case "${1:-}" in
         export CATALOG_URL CATALOG_CLIENT CATALOG_SECRET
         body="{\"catalog\":{\"name\":\"suite\",\"type\":\"INTERNAL\",\"properties\":{\"default-base-location\":\"s3://$STORE_BUCKET/warehouse\"},\"storageConfigInfo\":{\"storageType\":\"S3\",\"allowedLocations\":[\"s3://$STORE_BUCKET/warehouse\"],\"endpoint\":\"$STORE_ENDPOINT\",\"pathStyleAccess\":true,\"stsUnavailable\":true}}}"  # name-ok
         code=$("$here/catalogs/request" POST /api/management/v1/catalogs -d "$body")
-        [ "$code" = 201 ] || { echo "the catalog did not start or create the suite's catalog ($code); its log is $WORK/catalog/log"; exit 1; } ;;
+        if [ "$code" != 201 ]; then
+            echo "the catalog did not start or create the suite's catalog ($code); it last said:"
+            tail -3 "$WORK/catalog/log" 2>/dev/null
+            exit 1
+        fi ;;
     stop)
         if [ -f "$WORK/catalog/pid" ]; then
             pid=$(cat "$WORK/catalog/pid")

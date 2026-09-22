@@ -547,7 +547,14 @@ any commercial system needs, whatever its category.
 ### R-78 Consumer-driven contract tests
 
 - **Class:** foundation
-- **Status:** planned
+- **Status:** done — each consumer records what it relies on in
+  `contracts/expectations/`, and the producer's own build calls its real
+  service and checks every recorded expectation, so a change that breaks
+  a consumer fails the producer's build; a planted rename of the query
+  service's component failed it, naming the consumer and the field. The
+  consumer's build checks the other direction: a field it reads but does
+  not record fails its tests (`services/query/tests/expectations.rs`,
+  `services/gateway/internal/server/expectations_test.go`).
 - **Outcome:** each consumer publishes what it relies on; each
   producer's CI verifies against every consumer's expectations.
 - **Practice and precedent:** contract testing, where producers and

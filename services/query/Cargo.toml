@@ -10,14 +10,17 @@ workspace = true
 
 [dependencies]
 prost.workspace = true
-prost-types.workspace = true
+serde.workspace = true
 tonic.workspace = true
 tonic-prost.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 
+[dev-dependencies]
+serde_json.workspace = true
+
 [build-dependencies]
-prost.workspace = true
 prost-types.workspace = true
+prost.workspace = true
 tonic-prost-build.workspace = true

@@ -2,10 +2,10 @@
 
 use std::future::Future;
 
+use crate::build::build_service_server::{BuildService, BuildServiceServer};
+use crate::build::{BuildInfo, GetBuildInfoRequest, GetBuildInfoResponse};
 use crate::identity;
 use crate::libs::{log, rpc, runtime};
-use crate::proto::build::build_service_server::{BuildService, BuildServiceServer};
-use crate::proto::build::{BuildInfo, GetBuildInfoRequest, GetBuildInfoResponse};
 
 /// The metadata key carrying the request id (roadmap R-08).
 pub const REQUEST_ID: &str = "x-request-id";

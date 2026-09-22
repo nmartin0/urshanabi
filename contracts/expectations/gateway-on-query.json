@@ -1,0 +1,17 @@
+{
+  "consumer": "gateway",
+  "producer": "query",
+  "interactions": [
+    {
+      "why": "the gateway answers GET /v1/builds with its own identity, then the query service's",
+      "rpc": "urshanabi.build.v1.BuildService/GetBuildInfo",
+      "request": {},
+      "expect": [
+        { "path": "builds.0.component", "equals": "query" },
+        { "path": "builds.0.version", "matches": "^development(\\+modified)?$|^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+        { "path": "builds.0.source_revision", "matches": "^[0-9a-f]{40}$" },
+        { "path": "builds.0.source_committed_at.seconds", "present": true }
+      ]
+    }
+  ]
+}

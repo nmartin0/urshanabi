@@ -3,9 +3,9 @@
 
 use std::future::Future;
 
+use query::build::GetBuildInfoRequest;
+use query::build::build_service_client::BuildServiceClient;
 use query::libs::{rpc, runtime};
-use query::proto::build::GetBuildInfoRequest;
-use query::proto::build::build_service_client::BuildServiceClient;
 use query::service::{self, REQUEST_ID};
 
 /// Runs `f` on a fresh runtime.
