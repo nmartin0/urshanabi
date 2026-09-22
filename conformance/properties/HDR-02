@@ -1,0 +1,9 @@
+#!/bin/sh
+# conformance/properties/HDR-02: every response specific to its caller forbids caching
+# (conformance/BEHAVIOURS.md). Exits 0 when it holds, 1 when it does
+# not, 2 when Urshanabi cannot yet be held to it.
+set -u
+for route in $("$DRIVER" routes); do
+    "$DRIVER" request "${route%%:*}" "${route#*:}" || { echo "$route: no answer"; exit 1; }
+    "$DRIVER" has cache-control no-store || { echo "$route does not forbid caching"; exit 1; }
+done

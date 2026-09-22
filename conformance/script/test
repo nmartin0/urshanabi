@@ -1,0 +1,4 @@
+#!/bin/sh
+# conformance/script/test: the suite checks a running system, so it runs
+# under script/test-integration only.
+echo "conformance: no unit tests; the suite runs under script/test-integration."

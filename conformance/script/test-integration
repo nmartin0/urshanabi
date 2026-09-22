@@ -1,0 +1,35 @@
+#!/bin/sh
+# conformance/script/test-integration: check Urshanabi, black-box through
+# its driver, against every property implemented from
+# conformance/BEHAVIOURS.md (roadmap R-07). Properties are discovered,
+# never listed. A failure fails the run; a pending property is reported
+# with the roadmap item it waits for.
+set -u
+cd "$(dirname "$0")/../.." || exit 1
+PATH="$PWD/.tools/bin:$PATH"
+WORK=$(mktemp -d) || exit 1
+STACK="conformance-$$"
+PORT=$((30000 + $$ % 20000))
+DRIVER="$PWD/conformance/drivers/urshanabi"
+export PATH WORK STACK PORT DRIVER
+trap '"$DRIVER" stop; rm -rf "$WORK"' EXIT
+"$DRIVER" start || { echo "conformance: FAILED: the stack did not start"; exit 1; }
+
+found=0; passed=0; pending=0; failed=""
+for p in conformance/properties/*; do
+    [ -x "$p" ] || continue
+    found=$((found + 1))
+    id=${p##*/}
+    out=$("$p"); rc=$?
+    case $rc in
+        0) passed=$((passed + 1)); echo "  pass     $id" ;;
+        2) pending=$((pending + 1)); echo "  pending  $id: $out" ;;
+        *) failed="$failed $id"; echo "  FAIL     $id: $out" ;;
+    esac
+done
+[ "$found" -gt 0 ] || { echo "conformance: FAILED: no properties found"; exit 1; }
+if [ -n "$failed" ]; then
+    echo "conformance: FAILED:$failed"
+    exit 1
+fi
+echo "conformance: $passed properties hold, $pending pending."

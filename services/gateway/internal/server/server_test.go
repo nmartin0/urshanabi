@@ -192,3 +192,27 @@ func (b *syncBuffer) String() string {
 	defer b.mu.Unlock()
 	return b.out.String()
 }
+
+func TestEveryResponseCarriesTheSecurityHeaders(t *testing.T) {
+	web := start(t, &fakeQuery{})
+	want := map[string]string{
+		"X-Content-Type-Options":  "nosniff",
+		"X-Frame-Options":         "DENY",
+		"Referrer-Policy":         "no-referrer",
+		"Content-Security-Policy": "default-src 'none'; frame-ancestors 'none'; base-uri 'none'",
+		"Cache-Control":           "no-store",
+	}
+	for _, c := range []struct{ method, path string }{{"GET", "/v1/builds"}, {"GET", "/nope"}, {"POST", "/v1/builds"}} {
+		req, _ := http.NewRequest(c.method, web.URL+c.path, nil)
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_ = resp.Body.Close()
+		for name, value := range want {
+			if got := resp.Header.Get(name); got != value {
+				t.Errorf("%s %s: %s is %q, want %q", c.method, c.path, name, got, value)
+			}
+		}
+	}
+}

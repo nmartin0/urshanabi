@@ -180,7 +180,15 @@ any commercial system needs, whatever its category.
 ### R-07 A conformance suite, built test-first with Urshanabi
 
 - **Class:** foundation
-- **Status:** planned
+- **Status:** in progress — the suite runs black-box against the
+  stack's container images through a driver, discovering each property;
+  HDR-01, HDR-02 and HDR-04 hold, each seen to fail first — the first
+  two against the gateway before its headers existed, the third on a
+  planted route — and HDR-03 is reported pending until configuration
+  generations exist (`conformance/script/test-integration`,
+  `conformance/properties/HDR-01`); remaining: every other property,
+  test-first as its feature arrives, and the suite's long-term language,
+  for the owner.
 - **Outcome:** `conformance/BEHAVIOURS.md` implemented as black-box
   property tests against Urshanabi, through a thin driver that
   translates each property into Urshanabi's own interface. The suite is

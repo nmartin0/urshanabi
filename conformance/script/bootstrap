@@ -1,0 +1,6 @@
+#!/bin/sh
+# conformance/script/bootstrap: the suite runs the stack from its images,
+# as the end-to-end journeys do.
+set -u
+cd "$(dirname "$0")/../.." || exit 1
+exec e2e/script/bootstrap

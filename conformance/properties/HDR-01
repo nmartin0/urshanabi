@@ -1,0 +1,13 @@
+#!/bin/sh
+# conformance/properties/HDR-01: every response carries the security headers
+# (conformance/BEHAVIOURS.md). Exits 0 when it holds, 1 when it does
+# not, 2 when Urshanabi cannot yet be held to it.
+set -u
+for route in $("$DRIVER" routes); do
+    "$DRIVER" request "${route%%:*}" "${route#*:}" || { echo "$route: no answer"; exit 1; }
+    "$DRIVER" has x-content-type-options nosniff || { echo "$route lacks x-content-type-options"; exit 1; }
+    "$DRIVER" has x-frame-options deny || { echo "$route lacks x-frame-options"; exit 1; }
+    "$DRIVER" has referrer-policy no-referrer || { echo "$route lacks referrer-policy"; exit 1; }
+    "$DRIVER" has content-security-policy "default-src 'none'; frame-ancestors 'none'; base-uri 'none'" ||
+        { echo "$route lacks content-security-policy"; exit 1; }
+done

@@ -116,6 +116,11 @@ who does not exist is a 404. *Evidence:*
 `content-security-policy: default-src 'self'; object-src 'none';
 base-uri 'self'; frame-ancestors 'none'`. *Evidence:*
 `test_security_headers_are_present_on_every_response`. *Level:* http.
+*Urshanabi's representation:* `x-content-type-options: nosniff`,
+`x-frame-options: DENY`, `referrer-policy: no-referrer` and
+`content-security-policy: default-src 'none'; frame-ancestors 'none';
+base-uri 'none'` — stricter than Elysium's, since the gateway serves
+data, never pages. Checked by `conformance/properties/HDR-01`.
 
 **HDR-02** Every response specific to its caller forbids caching,
 including write details. *Elysium's representation:*
@@ -123,6 +128,9 @@ including write details. *Elysium's representation:*
 `test_me_routes_set_cache_control_no_store`,
 `test_every_per_caller_route_forbids_caching`,
 `test_a_write_detail_forbids_caching_too`. *Level:* http.
+*Urshanabi's representation:* `cache-control: no-store` on every
+response, since any response may be specific to its caller. Checked by
+`conformance/properties/HDR-02`.
 
 **HDR-03** Every response — including unauthenticated ones — says
 which configuration generation answered it, and the number changes
@@ -138,6 +146,8 @@ served, since it would list every administrative route to an
 unauthenticated caller. *Elysium's representation:* 404. *Evidence:* the interface-description
 availability test in `test_api.py`, cited by description because its
 name contains product names. *Level:* http.
+*Urshanabi's representation:* 404, like every unknown route. Checked by
+`conformance/properties/HDR-04`.
 
 ---
 

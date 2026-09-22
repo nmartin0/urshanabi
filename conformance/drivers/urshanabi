@@ -1,0 +1,27 @@
+#!/bin/sh
+# conformance/drivers/urshanabi: how the suite reaches Urshanabi (roadmap
+# R-07). Properties use only these subcommands, so none depends on how
+# Urshanabi is started or addressed:
+#   start | stop          run or remove the whole stack from its images
+#   request METHOD PATH   one unauthenticated request; the status, the
+#                         lower-cased headers and the body land in $WORK
+#   has HEADER VALUE      the last response carries exactly that header
+#   routes                one route that answers and two the router
+#                         refuses, as METHOD:PATH
+# $STACK, $PORT and $WORK come from the runner.
+set -u
+case "${1:-}" in
+    start)
+        URSHANABI_STACK=$STACK URSHANABI_PORT=$PORT URSHANABI_QUERY_PORT=$((PORT + 1)) script/server > /dev/null ;;
+    stop)
+        URSHANABI_STACK=$STACK script/server stop > /dev/null ;;
+    request)
+        curl -s -X "$2" -o "$WORK/body" -D "$WORK/raw" -w '%{http_code}' "http://127.0.0.1:$PORT$3" > "$WORK/status" || exit 1  # name-ok
+        tr -d '\r' < "$WORK/raw" | tr '[:upper:]' '[:lower:]' > "$WORK/headers" ;;
+    has)
+        grep -q -x -F "$2: $3" "$WORK/headers" ;;
+    routes)
+        echo "GET:/v1/builds GET:/no-such-route POST:/v1/builds" ;;
+    *)
+        echo "usage: conformance/drivers/urshanabi start|stop|request|has|routes" >&2; exit 2 ;;
+esac

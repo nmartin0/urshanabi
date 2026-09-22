@@ -47,7 +47,7 @@ func New(self identity.Build, query buildv1.BuildServiceClient, log *slog.Logger
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /v1/builds", s.builds)
-	return requestid.Middleware(mux)
+	return requestid.Middleware(securityHeaders(mux))
 }
 
 // builds answers with the gateway's build first, then the query service's.
