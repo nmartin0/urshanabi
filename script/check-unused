@@ -1,0 +1,42 @@
+#!/bin/sh
+# script/check-unused: a library component ships with its caller, or not
+# at all (roadmap R-33). A library nothing uses is dead weight that
+# drifts out of step with the code around it, so this check fails on one
+# unless its README records why it is ahead of its caller, citing the
+# roadmap item that called for it. Services are programs; they are
+# entered, not called, and record instead why each is a separate process
+# (script/check-decomposition).
+set -u
+cd "$(dirname "$0")/.." || exit 1
+libraries=0
+failed=""
+for dir in libs/*; do
+    [ -d "$dir" ] || continue
+    name=${dir##*/}
+    libraries=$((libraries + 1))
+    # Used when a component outside it declares it as a dependency or
+    # imports it. Only files version control tracks count: an installed
+    # tool that happens to contain the word is not a caller.
+    users=$(git ls-files |  # name-ok
+        grep -v "^$dir/" |
+        grep -E '\.(rs|go|py)$|/Cargo\.toml$|^Cargo\.toml$|/pyproject\.toml$' |  # name-ok
+        xargs grep -l -E "^[[:space:]]*$name(\.workspace)?[[:space:]]*=|\"urshanabi/libs/$name|^[[:space:]]*(import|from) $name([. ]|\$)" 2>/dev/null |
+        grep -v '^Cargo.toml$')
+    [ -n "$users" ] && continue
+    ahead=$(awk '/^- \*\*Ahead of its caller:\*\*/ { found = 1 }
+                 found && /^- \*\*/ && !/^- \*\*Ahead of its caller:\*\*/ { exit }
+                 found { printf "%s ", $0 }' "$dir/README.md" 2>/dev/null)
+    if [ -z "$ahead" ]; then
+        echo "UNUSED $name: no component uses it, and it does not record why it is ahead of its caller (R-33)"
+        failed="$failed $name"
+    elif ! echo "$ahead" | grep -q 'R-[0-9]'; then
+        echo "UNUSED $name: is ahead of its caller but cites no roadmap item that called for it"
+        failed="$failed $name"
+    fi
+done
+[ "$libraries" -gt 0 ] || { echo "FAIL: no library components found"; exit 1; }
+if [ -n "$failed" ]; then
+    echo "check-unused FAILED:$failed"
+    exit 1
+fi
+echo "check-unused: $libraries library components, each used or recorded as ahead of its caller."

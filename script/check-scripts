@@ -794,6 +794,29 @@ registered v6 MIT yes  # name-ok
 printf '[workspace.dependencies]\nthing = "1.0"\nother = "2.0"\n' > "$t/Cargo.toml"  # name-ok
 expect_msg fail "a dependency with no entry fails" "no entry in the register" "$t/script/check-dependencies"
 
+
+# --- check-unused: a library ships with its caller (R-33) -------------
+library() {  # library NAME README-EXTRA: one library component
+    tree "$1" check-unused
+    mkdir -p "$t/libs/thing" "$t/services/user"
+    printf '# Thing\n\n- **Speaks to:** nothing\n%s\n' "$2" > "$t/libs/thing/README.md"
+    printf '//! A library.\n' > "$t/libs/thing/lib.rs"
+    printf '# User\n' > "$t/services/user/README.md"
+    (cd "$t" && git add -A >/dev/null 2>&1)  # name-ok
+}
+library w1 ''
+expect_msg fail "a library nothing uses, recording nothing, fails" "does not record why it is ahead" "$t/script/check-unused"
+library w2 '- **Ahead of its caller:** its caller has not been written yet'
+expect_msg fail "a library ahead of its caller citing no roadmap item fails" "cites no roadmap item" "$t/script/check-unused"
+library w3 '- **Ahead of its caller:** the owner asked for it first (R-51)'
+expect pass "a library recording why it is ahead of its caller passes" "$t/script/check-unused"
+library w4 ''
+printf '[dependencies]\nthing = { path = "../../libs/thing" }\n' > "$t/services/user/Cargo.toml"  # name-ok
+(cd "$t" && git add -A >/dev/null 2>&1)  # name-ok
+expect pass "a library a component depends on passes with no record" "$t/script/check-unused"
+tree w5 check-unused
+expect_msg fail "a tree with no libraries fails" "no library components" "$t/script/check-unused"
+
 # Guard: a self-test whose helper is missing or misspelled fails with
 # "not found" and records nothing. Count the calls written in this file
 # and require that every one ran.

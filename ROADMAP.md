@@ -506,11 +506,15 @@ any commercial system needs, whatever its category.
 ### R-33 Nothing built that nothing uses
 
 - **Class:** foundation
-- **Status:** in progress — the services language's gates refuse any
-  function unreachable from the program, and the systems language's
-  compiler refuses unused private code, each seen to fail on a planted
-  fault (`script/services-gates`, `script/systems-gates`); remaining: a
-  check that fails on an uncalled public component.
+- **Status:** done — the services language's gates refuse any function
+  unreachable from the program, the systems language's compiler refuses
+  unused private code, and a library component nothing uses fails the
+  build unless its README records why it is ahead of its caller, citing
+  the roadmap item that called for it (`script/check-unused`,
+  `script/services-gates`, `script/systems-gates`). The ontology library
+  is the one such case, by the owner's decision to define the format
+  before its consumers. Each refusal was seen to fail on a planted
+  fault.
 - **Outcome:** a component ships with its caller, or not at all.
 - **Learned from Elysium:** a memory guard was built and tested but
   never wired into the agent. [code]

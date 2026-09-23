@@ -8,6 +8,11 @@ components can disagree about the ontology (R-51).
 - **Language role:** systems language
 - **Holds:** nothing
 - **Speaks to:** nothing on the network; it is a library
+- **Ahead of its caller:** nothing uses it yet. The owner chose to
+  define the ontology's format and its one implementation before the
+  services that load it (R-51), so that no two components could ever
+  disagree about the meaning; its first caller is the control plane's
+  compiler (R-70).
 - **Roadmap:** R-51, R-70
 
 **Status:** loads an ontology written in the format

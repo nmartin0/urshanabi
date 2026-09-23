@@ -33,6 +33,8 @@ Repository checks, each runnable on its own:
   (H1); configured by `names.list`, `names.allow` and `names.exempt`.
 - `check-docs` — every roadmap item, behaviour property and rule cited
   anywhere exists, and every roadmap item is complete (R-15).
+- `check-unused` — a library component ships with its caller, or
+  records why it is ahead of it (R-33).
 - `check-shell` — every POSIX script passes the shell linter.
 - `check-workflows` — the CI definition is valid and free of known
   security flaws (R-86).
