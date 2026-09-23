@@ -27,7 +27,19 @@ if [ "$checks" -eq 0 ]; then
 fi
 
 printf '=== components\n'
-./script/each-component test || failed="$failed components"
+# The fast tier needs nothing outside the repository (roadmap R-02), so
+# every variable that could name an external service or a credential is
+# cleared before any component's tests run. A test that quietly used a
+# developer's database, endpoint or key then fails here, rather than on
+# somebody else's fresh clone.
+set --
+for name in $(env | sed 's/=.*//'); do
+    case "$name" in
+        *_URL | *_DSN | *_ENDPOINT | *_ADDRESS | *_PASSWORD | *_SECRET | *_TOKEN | *_KEY | AWS_* | STORE_* | CATALOG_*)
+            set -- "$@" -u "$name" ;;
+    esac
+done
+env "$@" ./script/each-component test || failed="$failed components"
 
 echo
 if [ -n "$failed" ]; then

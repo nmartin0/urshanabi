@@ -76,7 +76,14 @@ any commercial system needs, whatever its category.
 ### R-02 Tests declare their prerequisites
 
 - **Class:** foundation
-- **Status:** planned
+- **Status:** done — CI runs the fast tier on a fresh checkout with
+  nothing generated, and the tier clears every variable that could name
+  an external service or a credential before any component's tests run,
+  so a test quietly using a developer's database, endpoint or key fails
+  there rather than on somebody else's clone; three self-tests prove it,
+  one for a service and one for a credential (`script/test`,
+  `script/check-scripts`). A test that needs data must therefore declare
+  a fixture that builds it, or skip with the command that would.
 - **Outcome:** a test needing data declares a fixture that builds it,
   or skips with the exact command that would. The fast tier needs
   nothing outside the repository.

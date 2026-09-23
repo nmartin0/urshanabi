@@ -10,7 +10,9 @@ script/cibuild    # exactly what CI runs: bootstrap, test, test-integration
   `.tools/`, verifying every checksum, then every component's own
   bootstrap.
 - `test` — every repository check (`check-*`, discovered), then every
-  component's own `script/test`.
+  component's own `script/test`. It clears every variable that could
+  name an external service or a credential first, so no test may
+  quietly depend on one (R-02).
 - `test-integration` — every component's own `script/test-integration`.
 - `each-component NAME` — runs every component's `script/NAME`; the
   one place components are discovered.

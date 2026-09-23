@@ -714,6 +714,40 @@ expect_msg fail "a compared choice citing no roadmap item fails" "cites no roadm
 manifests u6 'thing = "1.0"  # rung 4: made up' "$good_services" "$good_pipeline"
 expect_msg fail "an unknown rung fails" "records no rung" "$t/script/check-rungs"
 
+
+# --- script/test: the fast tier needs nothing outside the repository --
+# (roadmap R-02). A component's tests run with every variable that could
+# name an external service or credential cleared.
+prereq() {  # prereq NAME: a tree with one check and one component
+    tree "$1" test each-component
+    printf '#!/bin/sh\nexit 0\n' > "$t/script/check-nothing" && chmod +x "$t/script/check-nothing"
+    component thing
+}
+prereq q1
+printf '#!/bin/sh\necho "thing: tests passed."\n' > "$t/thing/script/test" && chmod +x "$t/thing/script/test"
+expect pass "a component needing nothing outside the repository passes" "$t/script/test"
+
+prereq q2
+cat > "$t/thing/script/test" <<'NEEDSDATABASE'
+#!/bin/sh
+[ -n "${DATABASE_URL:-}" ] || { echo "thing: FAILED: no database"; exit 1; }
+NEEDSDATABASE
+chmod +x "$t/thing/script/test"
+DATABASE_URL=postgres://somebody/somewhere  # name-ok
+export DATABASE_URL
+expect_msg fail "a test quietly using an external service fails the fast tier" "FAILED: no database" "$t/script/test"
+
+prereq q3
+cat > "$t/thing/script/test" <<'NEEDSKEY'
+#!/bin/sh
+[ -n "${AWS_SECRET_ACCESS_KEY:-}" ] || { echo "thing: FAILED: no key"; exit 1; }
+NEEDSKEY
+chmod +x "$t/thing/script/test"
+AWS_SECRET_ACCESS_KEY=not-a-real-key  # name-ok
+export AWS_SECRET_ACCESS_KEY
+expect_msg fail "a test quietly using a credential fails the fast tier" "FAILED: no key" "$t/script/test"
+unset DATABASE_URL AWS_SECRET_ACCESS_KEY  # name-ok
+
 # Guard: a self-test whose helper is missing or misspelled fails with
 # "not found" and records nothing. Count the calls written in this file
 # and require that every one ran.
