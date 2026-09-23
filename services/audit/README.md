@@ -6,6 +6,8 @@ witness the customer controls.
 
 - **Language role:** services language
 - **Holds:** audit-log write access
+- **Separate because:** it alone holds the audit log, which nothing
+  else may write (R-80)
 - **Speaks to:** audit events from every service
 - **Roadmap:** R-23, R-88
 

@@ -6,6 +6,8 @@ hidden rows, and large results stream in columnar form.
 
 - **Language role:** systems language
 - **Holds:** index and curated-layer read access
+- **Separate because:** it alone holds the index and curated-layer
+  read credentials, which no other process may use (R-80)
 - **Speaks to:** the gateway's and the agent's requests
 - **Roadmap:** R-21, R-68, R-69, R-70, R-71, R-114, R-116
 

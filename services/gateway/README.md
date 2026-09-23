@@ -6,6 +6,8 @@ safely.
 
 - **Language role:** services language
 - **Holds:** sessions
+- **Separate because:** it alone holds sessions and the login secrets,
+  and it is the only process the public network reaches (R-80)
 - **Speaks to:** browsers, API clients and external agents
 - **Roadmap:** R-36, R-44 to R-48, R-99, R-106
 

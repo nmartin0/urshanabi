@@ -5,6 +5,9 @@ workflow engine, with maker-checker rules for consequential actions.
 
 - **Language role:** services language
 - **Holds:** nothing beyond its workload identity
+- **Separate because:** it alone holds the workflow engine's
+  credentials; approvals and automations share it because they share
+  that engine and those secrets (R-80)
 - **Speaks to:** the durable workflow engine and the write service
 - **Roadmap:** R-38, R-42, R-57
 

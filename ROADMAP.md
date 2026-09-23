@@ -600,7 +600,13 @@ any commercial system needs, whatever its category.
 ### R-80 Decompose on evidence
 
 - **Class:** foundation
-- **Status:** planned
+- **Status:** done — every separately deployed service records why it
+  is separate, and the check fails unless that reason names what the
+  service alone holds or the measurement that proved the split necessary
+  (`script/check-decomposition`). All ten record one: nine by the secret
+  nobody else may hold, and the agent by the inverse, that it must hold
+  none, since it handles untrusted model output. Five self-tests prove
+  the check, including that a vague reason fails.
 - **Outcome:** every service contract exists from Phase 0, but the
   first release ships as few processes as the security boundaries allow,
   and each process exists because of the secrets it alone holds:

@@ -6,6 +6,7 @@ keys away from the front door.
 
 - **Language role:** services language
 - **Holds:** the signing keys
+- **Separate because:** it alone holds the signing keys (R-80)
 - **Speaks to:** cells, through signed bundles
 - **Roadmap:** R-51, R-52, R-73
 

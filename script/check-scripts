@@ -748,6 +748,25 @@ export AWS_SECRET_ACCESS_KEY
 expect_msg fail "a test quietly using a credential fails the fast tier" "FAILED: no key" "$t/script/test"
 unset DATABASE_URL AWS_SECRET_ACCESS_KEY  # name-ok
 
+
+# --- check-decomposition: a process exists for a reason (R-80) --------
+deployed() {  # deployed NAME REASON: one service whose README gives REASON
+    tree "$1" check-decomposition
+    mkdir -p "$t/services/thing"
+    printf '# Thing\n\n- **Holds:** something\n%s\n' "$2" > "$t/services/thing/README.md"
+}
+deployed d1 '- **Separate because:** it alone holds the source credentials (R-80)'
+expect pass "a service naming what it alone holds passes" "$t/script/check-decomposition"
+deployed d2 '- **Separate because:** a measurement showed one process could not keep
+  up (R-80)'
+expect pass "a service citing a measurement passes" "$t/script/check-decomposition"
+deployed d3 '- **Speaks to:** everyone'
+expect_msg fail "a service recording no reason fails" "does not record why it is a separate process" "$t/script/check-decomposition"
+deployed d4 '- **Separate because:** it felt cleaner this way'
+expect_msg fail "a reason that is neither a boundary nor a measurement fails" "names neither" "$t/script/check-decomposition"
+tree d5 check-decomposition
+expect_msg fail "a tree with no services fails" "no services found" "$t/script/check-decomposition"
+
 # Guard: a self-test whose helper is missing or misspelled fails with
 # "not found" and records nothing. Count the calls written in this file
 # and require that every one ran.

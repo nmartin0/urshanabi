@@ -7,6 +7,9 @@ pipelines' requirements.
 
 - **Language role:** agent and pipeline language
 - **Holds:** nothing
+- **Separate because:** it must hold no data secrets at all: it
+  handles untrusted model output, so it is kept apart from every
+  process that holds one (R-80)
 - **Speaks to:** the query service, the model gateway and other agents
 - **Roadmap:** R-26 to R-30, R-72, R-115
 

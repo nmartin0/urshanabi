@@ -6,6 +6,8 @@ backwards. The only writer of the index.
 
 - **Language role:** systems language
 - **Holds:** index write access
+- **Separate because:** it alone holds the index's write credentials
+  (R-80)
 - **Speaks to:** the change log and the serving engine
 - **Roadmap:** R-70, R-105, R-111
 

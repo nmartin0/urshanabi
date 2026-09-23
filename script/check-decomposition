@@ -1,0 +1,42 @@
+#!/bin/sh
+# script/check-decomposition: every separately deployed service records
+# why it is separate (roadmap R-80). The first release ships as few
+# processes as the security boundaries allow, and each exists because of
+# what it alone holds, or because a measurement proved the split
+# necessary. A service whose README does not say which fails here, so
+# nobody can add a process on taste alone.
+set -u
+cd "$(dirname "$0")/.." || exit 1
+services=0
+failed=""
+for dir in services/*; do
+    [ -d "$dir" ] || continue
+    name=${dir##*/}
+    readme="$dir/README.md"
+    if [ ! -f "$readme" ]; then
+        echo "DECOMPOSITION $name: has no README.md"; failed="$failed $name"; continue
+    fi
+    services=$((services + 1))
+    # The reason may wrap over several lines; read them all.
+    line=$(awk '/^- \*\*Separate because:\*\*/ { found = 1 }
+                found && /^- \*\*/ && !/^- \*\*Separate because:\*\*/ { exit }
+                found { printf "%s ", $0 }' "$readme")
+    if [ -z "$line" ]; then
+        echo "DECOMPOSITION $name: does not record why it is a separate process (R-80)"
+        failed="$failed $name"
+        continue
+    fi
+    # The reason must be a boundary it alone holds, or a measurement.
+    case "$line" in
+        *secret*|*credential*|*key*|*session*|*signing*|*audit\ log*|*measured*|*measurement*) ;;
+        *)
+            echo "DECOMPOSITION $name: its reason names neither what it alone holds nor a measurement"
+            failed="$failed $name" ;;
+    esac
+done
+[ "$services" -gt 0 ] || { echo "FAIL: no services found to check"; exit 1; }
+if [ -n "$failed" ]; then
+    echo "check-decomposition FAILED:$failed"
+    exit 1
+fi
+echo "check-decomposition: $services deployed services, each recording why it is separate."
