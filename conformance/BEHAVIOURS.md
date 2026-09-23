@@ -116,11 +116,14 @@ who does not exist is a 404. *Evidence:*
 `content-security-policy: default-src 'self'; object-src 'none';
 base-uri 'self'; frame-ancestors 'none'`. *Evidence:*
 `test_security_headers_are_present_on_every_response`. *Level:* http.
-*Urshanabi's representation:* `x-content-type-options: nosniff`,
-`x-frame-options: DENY`, `referrer-policy: no-referrer` and
-`content-security-policy: default-src 'none'; frame-ancestors 'none';
-base-uri 'none'` — stricter than Elysium's, since the gateway serves
-data, never pages. Checked by `conformance/properties/HDR-01`.
+*Urshanabi's representation:* seven headers, set in one place
+(`services/gateway/internal/server/headers.go`, roadmap R-36):
+`x-content-type-options: nosniff`, `x-frame-options: DENY`,
+`referrer-policy: no-referrer`, a content policy allowing nothing, a
+permissions policy asking for no browser capability, `cache-control:
+no-store`, and transport security set by the gateway itself rather than
+by a proxy nobody documents. Checked by
+`conformance/properties/HDR-01`.
 
 **HDR-02** Every response specific to its caller forbids caching,
 including write details. *Elysium's representation:*

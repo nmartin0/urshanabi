@@ -1875,7 +1875,15 @@ then audit and operations.
 ### R-36 Complete security headers, one owner each
 
 - **Class:** foundation
-- **Status:** planned
+- **Status:** done — the gateway sets seven security headers in one
+  place, including the permissions policy Elysium lacked and the
+  transport security it left to an undocumented proxy; one test asserts
+  every header, with its value, on every route and fails if any is set
+  more than once, and another reads the gateway's own source and fails
+  if any second place sets one. A planted second owner and a planted
+  missing header were each caught, and the conformance suite checks the
+  same set black-box (`services/gateway/internal/server/headers.go`,
+  `conformance/properties/HDR-01.py`).
 - **Outcome:** the full header set, each header set in exactly one
   documented place.
 - **Learned from Elysium:** no permissions-policy header, and the
