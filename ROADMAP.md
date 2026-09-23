@@ -1894,7 +1894,17 @@ then audit and operations.
 ### R-83 Deadlines, circuit breakers and bulkheads
 
 - **Class:** foundation
-- **Status:** planned
+- **Status:** done — every call to another service goes through that
+  dependency's own guard: a deadline that travels with the call and
+  yields to a caller's sooner one, a rest period once enough calls in a
+  row have failed, and its own bounded slots, so one stalled service
+  cannot take the resources another's callers need
+  (`services/gateway/internal/dependency/dependency.go`). With the query
+  service stalled, a request that needs it fails at its deadline as
+  unreachable, a request that needs nothing answers at once, and once
+  the dependency is resting further requests fail immediately without
+  calling it. Removing the deadline made both tests hang until the
+  harness killed them.
 - **Outcome:** a deadline set at the gateway travels with every call
   and shrinks at each hop; calls to a failing dependency trip a breaker;
   each dependency has its own bounded resources.

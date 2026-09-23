@@ -9,9 +9,12 @@
 package failure
 
 import (
+	"errors"
+
 	"google.golang.org/grpc/codes"  // name-ok
 	"google.golang.org/grpc/status" // name-ok
 
+	"urshanabi/services/gateway/internal/dependency"
 	commonv1 "urshanabi/services/gateway/internal/gen/urshanabi/common/v1"
 )
 
@@ -49,6 +52,11 @@ const (
 // Kind says which of the four kinds err is. A producer that states its
 // own kind is believed; otherwise the transport's code decides.
 func Kind(err error) string {
+	// A call the guard refused never reached the dependency, which is
+	// exactly what unreachable means to a caller (R-83).
+	if errors.Is(err, dependency.Unavailable) {
+		return Unreachable
+	}
 	st, ok := status.FromError(err)
 	if !ok {
 		return Misconfigured

@@ -19,6 +19,7 @@ import (
 	"google.golang.org/grpc/metadata"             // name-ok
 	"google.golang.org/grpc/status"               // name-ok
 
+	"urshanabi/services/gateway/internal/dependency"
 	buildv1 "urshanabi/services/gateway/internal/gen/urshanabi/build/v1"
 	commonv1 "urshanabi/services/gateway/internal/gen/urshanabi/common/v1"
 	"urshanabi/services/gateway/internal/identity"
@@ -34,6 +35,7 @@ type fakeQuery struct {
 	gotID  string
 	fail   bool
 	detail error
+	stall  chan struct{}
 }
 
 func (f *fakeQuery) id() string {
@@ -48,6 +50,14 @@ func (f *fakeQuery) GetBuildInfo(ctx context.Context, _ *buildv1.GetBuildInfoReq
 		f.mu.Lock()
 		f.gotID = ids[0]
 		f.mu.Unlock()
+	}
+	if f.stall != nil {
+		// Answer nothing until the caller's deadline passes.
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-f.stall:
+		}
 	}
 	if f.detail != nil {
 		return nil, f.detail
@@ -81,10 +91,18 @@ func startLogging(t *testing.T, fake *fakeQuery, w io.Writer) *httptest.Server {
 	}
 	t.Cleanup(func() { _ = conn.Close() })
 	self := identity.Build{Component: "gateway", Version: "development", Revision: strings.Repeat("a", 40), CommittedAt: time.Unix(1, 0).UTC()}
-	web := httptest.NewServer(New(self, buildv1.NewBuildServiceClient(conn), logging.New(w)).Handler())
+	gateway := New(self, buildv1.NewBuildServiceClient(conn), logging.New(w))
+	if guarded != nil {
+		gateway.guard = guarded
+	}
+	web := httptest.NewServer(gateway.Handler())
 	t.Cleanup(web.Close)
 	return web
 }
+
+// guarded, when set, replaces the guard a started gateway uses, so a
+// test need not wait out the real deadline.
+var guarded *dependency.Guard
 
 func get(t *testing.T, url, id string) (*http.Response, []byte) {
 	t.Helper()

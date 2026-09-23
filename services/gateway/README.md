@@ -15,6 +15,10 @@ safely.
 with its own build identity and the query service's, and gives every
 request an id that follows it into the query service and both logs.
 
+Every call to another service goes through that dependency's own
+guard: a deadline, a rest period after repeated failure, and bounded
+slots (R-83).
+
 - `script/generate` generates the contract code, never committed.
 - `script/test` runs the services-language gates
   (`script/services-gates`).
