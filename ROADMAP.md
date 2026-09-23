@@ -1407,7 +1407,17 @@ then audit and operations.
 ### R-48 Constant-time token comparison
 
 - **Class:** foundation
-- **Status:** planned
+- **Status:** done — a check reads every source file of our own
+  languages and fails on any comparison of a secret, token, password,
+  credential, signature or session identifier that does not use a
+  constant-time function; a comparison against nothing is a presence
+  check and passes (`script/check-constant-time`). It checks the source
+  rather than measuring, because a timing test cannot be made reliable:
+  an early-exit comparison leaks a few nanoseconds, while the machines
+  that run tests add scheduling, collection and frequency noise measured
+  in microseconds, so such a test would fail at random or pass with the
+  leak intact. Five self-tests prove it, including that an ordinary
+  comparison of a token fails.
 - **Outcome:** constant-time comparison for every secret.
 - **Learned from Elysium:** the anti-forgery check compares with
   ordinary equality. Practically unexploitable, and free to fix. [code]

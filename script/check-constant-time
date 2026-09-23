@@ -1,0 +1,44 @@
+#!/bin/sh
+# script/check-constant-time: every comparison of a secret uses a
+# constant-time function (roadmap R-48). Elysium's anti-forgery check
+# compares with ordinary equality: practically unexploitable, and free
+# to fix.
+#
+# This is a check on the source, not a measurement, because a timing
+# test cannot be made reliable: the difference an early-exit comparison
+# leaks is a few nanoseconds, while the machines that run the tests add
+# scheduling, garbage collection, frequency scaling and noisy
+# neighbours measured in microseconds. A test that tried would either
+# fail at random or pass while the leak remained. What can be checked
+# exactly is which function the code calls, so that is what is checked.
+#
+# A comparison against nothing -- empty, unset, absent -- is a presence
+# check, not a comparison of values, and leaks nothing.
+set -u
+cd "$(dirname "$0")/.." || exit 1
+
+secret='secret|token|password|passphrase|credential|signature|hmac|digest|nonce|api_key|apikey|session_id'
+constant='ConstantTimeCompare|constant_time_eq|compare_digest|timingSafeEqual|ct_eq'
+
+files=$(git ls-files | grep -E '\.(go|rs|py)$' | grep -v '_test\.|/tests/|internal/gen/')  # name-ok
+checked=0
+failed=""
+for file in $files; do
+    checked=$((checked + 1))
+    found=$(grep -n -i -E "($secret)[a-z_]*[[:space:]]*(==|!=)|(==|!=)[[:space:]]*[a-z_]*($secret)" "$file" |
+        grep -v -i -E "($constant)" |
+        grep -v -E '(==|!=)[[:space:]]*(""|nil|None|\x27\x27|0|len\()' |
+        grep -v -E '(==|!=)[[:space:]]*[A-Za-z_.]*(Unspecified|Empty)' |
+        grep -v 'constant-time-ok')
+    if [ -n "$found" ]; then
+        echo "$found" | sed "s|^|CONSTANT-TIME $file:|"
+        failed="$failed $file"
+    fi
+done
+[ "$checked" -gt 0 ] || { echo "FAIL: no source files found to check"; exit 1; }
+if [ -n "$failed" ]; then
+    echo "check-constant-time FAILED:$failed"
+    echo "Compare secrets with a constant-time function, never with == or !=."
+    exit 1
+fi
+echo "check-constant-time: $checked source files; every secret is compared in constant time."

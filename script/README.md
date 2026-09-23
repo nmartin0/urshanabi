@@ -54,6 +54,8 @@ Repository checks, each runnable on its own:
   seeing no change (R-11).
 - `check-dependencies` — every dependency we chose has a register
   entry, and its licence is one the allowlist accepts (H4a, R-85).
+- `check-constant-time` — every comparison of a secret uses a
+  constant-time function (R-48).
 - `check-decomposition` — every separately deployed service records
   why it is separate: what it alone holds, or the measurement that
   proved the split necessary (R-80).

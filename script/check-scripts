@@ -844,6 +844,25 @@ expect_msg fail "a licence no check can name fails" "matches no licence this che
 licensed x4 "MIT OR Apache-2.0" "$mit"  # name-ok
 expect pass "an entry recording a choice passes when one of them matches" "$t/script/check-licences"
 
+
+# --- check-constant-time: secrets are compared in constant time (R-48) -
+compares() {  # compares NAME LINE: one source file containing LINE
+    tree "$1" check-constant-time
+    mkdir -p "$t/services/thing"
+    printf 'package thing\n\nfunc check() bool {\n%s\n}\n' "$2" > "$t/services/thing/check.go"  # name-ok
+    (cd "$t" && git add -A >/dev/null 2>&1)  # name-ok
+}
+compares c1 '	return subtle.ConstantTimeCompare(given, wanted) == 1'  # name-ok
+expect pass "a constant-time comparison passes" "$t/script/check-constant-time"
+compares c2 '	return givenToken == wantedToken'  # name-ok
+expect_msg fail "an ordinary comparison of a token fails" "CONSTANT-TIME" "$t/script/check-constant-time"
+compares c3 '	return sessionSecret != stored'  # name-ok
+expect_msg fail "an ordinary comparison of a secret fails" "CONSTANT-TIME" "$t/script/check-constant-time"
+compares c4 '	return token == ""'  # name-ok
+expect pass "a presence check passes: it compares against nothing" "$t/script/check-constant-time"
+compares c5 '	return count == wanted'
+expect pass "a comparison of something that is not a secret passes" "$t/script/check-constant-time"
+
 # Guard: a self-test whose helper is missing or misspelled fails with
 # "not found" and records nothing. Count the calls written in this file
 # and require that every one ran.
