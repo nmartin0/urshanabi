@@ -817,6 +817,33 @@ expect pass "a library a component depends on passes with no record" "$t/script/
 tree w5 check-unused
 expect_msg fail "a tree with no libraries fails" "no library components" "$t/script/check-unused"
 
+
+# --- check-licences: the register matches what each dependency says ---
+# The dependency is a module of the services language, whose licence is
+# read from its text rather than from metadata it does not publish.
+licensed() {  # licensed NAME RECORDED TEXT: one entry and one licence file
+    tree "$1" check-licences
+    mkdir -p "$t/cache/example.com/thing@v1.0.0" "$t/.tools/bin"
+    printf '%s\n' "$3" > "$t/cache/example.com/thing@v1.0.0/LICENSE"
+    printf '[example.com/thing]\nlicence = %s\ngovernance = one organisation\nexit = ours\ndisconnection = a library\nsupply-chain = a proxy\nshipped = yes\n' "$2" > "$t/script/dependencies.register"
+    cat > "$t/.tools/bin/go" <<STUB  # name-ok
+#!/bin/sh
+[ "\${1:-}" = env ] && echo "$t/cache"
+exit 0
+STUB
+    chmod +x "$t/.tools/bin/go"  # name-ok
+}
+mit='Permission is hereby granted, free of charge, to anyone'  # name-ok
+bsd='Redistribution and use in source and binary forms, with Neither the name of'  # name-ok
+licensed x1 MIT "$mit"  # name-ok
+expect pass "an entry matching the dependency's own licence passes" "$t/script/check-licences"
+licensed x2 MIT "$bsd"  # name-ok
+expect_msg fail "an entry that misstates the licence fails" "the register records MIT, and it declares BSD-3-Clause" "$t/script/check-licences"  # name-ok
+licensed x3 MIT 'This software is provided under terms we invented'  # name-ok
+expect_msg fail "a licence no check can name fails" "matches no licence this check can name" "$t/script/check-licences"
+licensed x4 "MIT OR Apache-2.0" "$mit"  # name-ok
+expect pass "an entry recording a choice passes when one of them matches" "$t/script/check-licences"
+
 # Guard: a self-test whose helper is missing or misspelled fails with
 # "not found" and records nothing. Count the calls written in this file
 # and require that every one ran.

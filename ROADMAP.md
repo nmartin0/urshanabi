@@ -632,17 +632,18 @@ any commercial system needs, whatever its category.
 ### R-85 Every dependency passes the selection record
 
 - **Class:** foundation
-- **Status:** in progress — every dependency we chose has a register
-  entry recording its licence, governance, exit interface, behaviour
-  without a network and where its releases come from, and CI refuses a
-  dependency with no entry, an incomplete entry, a source-available
-  licence, or strong copyleft that ships inside a cell
-  (`script/dependencies.register`, `script/check-dependencies`); six
-  self-tests prove each refusal. The linter of the agent and pipeline
-  language is strong copyleft and is recorded as never reaching a cell;
-  remaining: checking each recorded licence against the dependency's own
-  licence text, which needs the owner's choice of licence tool, and
-  entries for the frontend language's dependencies when it arrives.
+- **Status:** done — every dependency we chose has a register entry
+  recording its licence, governance, exit interface, behaviour without a
+  network and where its releases come from, and CI refuses one with no
+  entry, an incomplete entry, a source-available licence, or strong
+  copyleft that ships inside a cell; each recorded licence is then
+  checked against what the dependency itself declares, in its own
+  published metadata or the wording of its licence file, and a licence
+  nothing can name fails (`script/dependencies.register`,
+  `script/check-dependencies`, `script/check-licences`). Ten self-tests
+  prove both checks, including an entry that misstates a licence. The
+  linter of the agent and pipeline language is strong copyleft and is
+  recorded as never reaching a cell.
 - **Outcome:** a dependency register records licence, governance, exit
   interface, disconnection and supply chain for every dependency. CI
   checks licences against an allowlist.

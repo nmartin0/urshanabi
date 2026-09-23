@@ -1,0 +1,89 @@
+#!/bin/sh
+# script/check-licences: every licence recorded in the dependency
+# register is the licence the dependency itself declares (roadmap R-85,
+# RULES.md H4a). The register is only as good as its entries, so each is
+# checked against the dependency's own words: the metadata it publishes
+# where it publishes one, and otherwise the text of its licence file,
+# identified by wording no other licence has. Anything unidentified
+# fails; a licence nobody can name is not a licence we can accept.
+set -u
+cd "$(dirname "$0")/.." || exit 1
+PATH="$PWD/.tools/bin:$PATH"
+export PATH
+register=script/dependencies.register
+cargo_home=${CARGO_HOME:-$HOME/.cargo}  # name-ok
+module_cache=$(go env GOMODCACHE 2>/dev/null || echo "${GOPATH:-$HOME/go}/pkg/mod")  # name-ok
+packages=.tools/opt/pipeline-tools/lib/python3.14/site-packages  # name-ok
+
+# The dependencies must be on the machine before their licences can be
+# read, and on a fresh clone the checks run before anything is built.
+cargo fetch --locked --quiet 2>/dev/null || true  # name-ok
+go mod download 2>/dev/null || true  # name-ok
+
+# name SPDX from a licence text on standard input.
+identify() {
+    text=$(tr '\n' ' ' | tr -s ' ')
+    case "$text" in
+        *"Apache License"*"Version 2.0"*) echo Apache-2.0 ;;  # name-ok
+        *"Permission is hereby granted, free of charge"*) echo MIT ;;  # name-ok
+        *"Redistribution and use in source and binary forms"*"Neither the name of"*) echo BSD-3-Clause ;;  # name-ok
+        *"Redistribution and use in source and binary forms"*) echo BSD-2-Clause ;;  # name-ok
+        *"Permission to use, copy, modify, and/or distribute"*) echo ISC ;;  # name-ok
+        *"Mozilla Public License Version 2.0"*) echo MPL-2.0 ;;  # name-ok
+        *"GNU GENERAL PUBLIC LICENSE"*"Version 2"*) echo GPL-2.0 ;;  # name-ok
+        *) echo unidentified ;;
+    esac
+}
+
+# declared NAME: what the dependency itself says its licence is, or
+# nothing when it publishes no metadata and no licence file.
+declared() {
+    crate=$(find "$cargo_home"/registry/src -maxdepth 2 -type d -name "$1-[0-9]*" 2>/dev/null | tail -1)
+    if [ -n "$crate" ]; then
+        grep -m1 '^license' "$crate/Cargo.toml" 2>/dev/null | cut -d '"' -f 2  # name-ok
+        return
+    fi
+    module=$(find "$module_cache" -maxdepth 3 -type d -name "$(basename "$1")@*" -path "*$(dirname "$1")*" 2>/dev/null | tail -1)
+    if [ -n "$module" ]; then
+        cat "$module"/LICENSE* 2>/dev/null | identify
+        return
+    fi
+    info=$(find "$packages" -maxdepth 1 -type d -name "$(echo "$1" | tr - _)-[0-9]*.dist-info" 2>/dev/null | tail -1)
+    if [ -n "$info" ]; then
+        found=$(grep -m1 '^License-Expression:' "$info/METADATA" 2>/dev/null | cut -d ' ' -f 2)
+        [ -n "$found" ] || found=$(cat "$info"/licenses/LICENSE* "$info"/LICENSE* 2>/dev/null | identify)
+        echo "$found"
+    fi
+}
+
+checked=0
+failed=""
+for name in $(grep '^\[' "$register" | tr -d '[]'); do
+    recorded=$(awk -v want="[$name]" '$0 == want { here = 1; next } here && /^\[/ { exit }
+                                      here && /^licence = / { sub(/^licence = /, ""); print; exit }' "$register")
+    says=$(declared "$name")
+    if [ -z "$says" ]; then
+        echo "LICENCE $name: is not installed, so its licence cannot be checked; build first"
+        failed="$failed $name"
+        continue
+    fi
+    checked=$((checked + 1))
+    case "$says" in
+        unidentified)
+            echo "LICENCE $name: its licence text matches no licence this check can name"
+            failed="$failed $name" ;;
+        *)
+            # A recorded choice of licences holds if the dependency's own
+            # answer is one of them.
+            if ! echo "$recorded" | tr ' ' '\n' | grep -q -x -F "$says" && [ "$recorded" != "$says" ]; then
+                echo "LICENCE $name: the register records $recorded, and it declares $says"
+                failed="$failed $name"
+            fi ;;
+    esac
+done
+[ "$checked" -gt 0 ] || { echo "FAIL: no licences could be checked"; exit 1; }
+if [ -n "$failed" ]; then
+    echo "check-licences FAILED:$failed"
+    exit 1
+fi
+echo "check-licences: $checked dependencies, each declaring the licence the register records."
