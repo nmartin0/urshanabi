@@ -444,6 +444,13 @@ delivered as patches.
 
 - **One patch per commit, numbered, applied in order.** A combined
   patch is all-or-nothing and buries each commit's reasoning.
+- **A delivery of several commits hands over every patch, in order,
+  with one script that applies them in that order.** Each keeps its
+  own commit message. Never squash separate changes into one commit to
+  make delivery simpler, and never hand over only the last patch: the
+  owner applies the sequence, not a summary of it. The single
+  exception is work that is genuinely one change, such as a change and
+  the test that proves it, which is one commit and one patch.
 - **Dry-run every patch against a fresh clone of the remote head**
   before presenting it, and check the commit count in it.
 - **Clear stale patches from the output folder** before generating,
