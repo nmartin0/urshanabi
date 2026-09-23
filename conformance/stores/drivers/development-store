@@ -10,22 +10,35 @@
 #   stop    stop it
 # $WORK and $STORE_PORT come from the runner.
 set -u
+# start_store: run it and wait for it to answer a signed request.
+start_store() {
+    mkdir -p "$WORK/store/data" || return 1
+    secret=$(od -An -N24 -tx1 /dev/urandom | tr -d ' \n')
+    printf '{"identities":[{"name":"suite","credentials":[{"accessKey":"suite","secretKey":"%s"}],"actions":["Admin","Read","Write","List","Tagging"]}]}' "$secret" > "$WORK/store/identities.json"
+    seaweedfs server -dir="$WORK/store/data" -ip=127.0.0.1 -master.port=$((STORE_PORT + 1)) -volume.port=$((STORE_PORT + 2)) -filer.port=$((STORE_PORT + 3)) -volume.minFreeSpace=100MiB -s3 -s3.port="$STORE_PORT" -s3.config="$WORK/store/identities.json" > "$WORK/store/log" 2>&1 &  # name-ok
+    echo $! > "$WORK/store/pid"
+    printf 'STORE_ENDPOINT=http://127.0.0.1:%s\nSTORE_ACCESS=suite\nSTORE_SECRET=%s\nSTORE_BUCKET=suite\n' "$STORE_PORT" "$secret" > "$WORK/store.env"
+    # Ready when the store creates the suite's bucket for a signed request.
+    scheme="aws:amz:us-east-1:s3"  # name-ok
+    for _ in $(seq 1 240); do
+        code=$(curl -s -o /dev/null -w '%{http_code}' -X PUT --aws-sigv4 "$scheme" --user "suite:$secret" "http://127.0.0.1:$STORE_PORT/suite")  # name-ok
+        [ "$code" = 200 ] && return 0
+        sleep 0.25
+    done
+    return 1
+}
+
 case "${1:-}" in
     start)
-        mkdir -p "$WORK/store/data" || exit 1
-        secret=$(od -An -N24 -tx1 /dev/urandom | tr -d ' \n')
-        printf '{"identities":[{"name":"suite","credentials":[{"accessKey":"suite","secretKey":"%s"}],"actions":["Admin","Read","Write","List","Tagging"]}]}' "$secret" > "$WORK/store/identities.json"
-        seaweedfs server -dir="$WORK/store/data" -ip=127.0.0.1 -master.port=$((STORE_PORT + 1)) -volume.port=$((STORE_PORT + 2)) -filer.port=$((STORE_PORT + 3)) -volume.minFreeSpace=100MiB -s3 -s3.port="$STORE_PORT" -s3.config="$WORK/store/identities.json" > "$WORK/store/log" 2>&1 &  # name-ok
-        echo $! > "$WORK/store/pid"
-        printf 'STORE_ENDPOINT=http://127.0.0.1:%s\nSTORE_ACCESS=suite\nSTORE_SECRET=%s\nSTORE_BUCKET=suite\n' "$STORE_PORT" "$secret" > "$WORK/store.env"
-        # Ready when the store creates the suite's bucket for a signed request.
-        scheme="aws:amz:us-east-1:s3"  # name-ok
-        for _ in $(seq 1 240); do
-            code=$(curl -s -o /dev/null -w '%{http_code}' -X PUT --aws-sigv4 "$scheme" --user "suite:$secret" "http://127.0.0.1:$STORE_PORT/suite")  # name-ok
-            [ "$code" = 200 ] && exit 0
-            sleep 0.25
-        done
-        echo "the development store did not start in a minute; it last said:"
+        # The store panics now and then while starting, a race of its
+        # own. It is thrown away after each run, so it is started once
+        # more before the run is failed.
+        if start_store; then exit 0; fi
+        echo "the development store did not start; starting it once more" >&2
+        "$0" stop
+        rm -rf "$WORK/store"
+        if start_store; then exit 0; fi
+        echo "the development store did not start twice; it last said:"
         tail -3 "$WORK/store/log" 2>/dev/null
         exit 1 ;;
     stop)
