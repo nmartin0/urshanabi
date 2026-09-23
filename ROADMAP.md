@@ -2544,7 +2544,16 @@ What an independent reviewer and a first customer will check.
 ### R-60 Graceful shutdown drains our own work
 
 - **Class:** foundation
-- **Status:** planned
+- **Status:** in progress — both services stop accepting work, finish
+  what they hold, and only then exit: the gateway waits for its
+  in-flight requests before the connection they use is closed, and the
+  query service waits for the calls already in hand
+  (`services/gateway/internal/server/serve.go`,
+  `services/query/tests/shutdown.rs`). Each is proven by holding work
+  open across a shutdown, and a planted shutdown that abandoned work in
+  hand failed in 94 microseconds where the work needed 300 milliseconds;
+  remaining: the done-when itself, a shutdown during a write leaving no
+  half-written record, which needs writes to exist.
 - **Outcome:** every service stops accepting work, finishes what it
   holds, then exits.
 - **Learned from Elysium:** no shutdown handling; a restart mid-write

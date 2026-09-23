@@ -67,10 +67,24 @@ pub async fn serve(
     listener: runtime::net::TcpListener,
     shutdown: impl Future<Output = ()>,
 ) -> Result<(), rpc::transport::Error> {
+    serve_with(listener, shutdown, Service::new(identity::this_build())).await
+}
+
+/// Serves `answers` on `listener` until `shutdown` completes, then
+/// finishes the calls already in flight before returning (roadmap
+/// R-60). Taking the answering service as an argument is what lets a
+/// test hold a call open across a shutdown.
+///
+/// # Errors
+///
+/// Returns the transport's error if the server fails.
+pub async fn serve_with<S: BuildService>(
+    listener: runtime::net::TcpListener,
+    shutdown: impl Future<Output = ()>,
+    answers: S,
+) -> Result<(), rpc::transport::Error> {
     rpc::transport::Server::builder()
-        .add_service(BuildServiceServer::new(
-            Service::new(identity::this_build()),
-        ))
+        .add_service(BuildServiceServer::new(answers))
         .serve_with_incoming_shutdown(
             rpc::transport::server::TcpIncoming::from(listener),
             shutdown,
