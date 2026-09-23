@@ -48,6 +48,8 @@ Repository checks, each runnable on its own:
   definitions (R-51).
 - `check-generated` — every generator runs and leaves version control
   seeing no change (R-11).
+- `check-dependencies` — every dependency we chose has a register
+  entry, and its licence is one the allowlist accepts (H4a, R-85).
 - `check-decomposition` — every separately deployed service records
   why it is separate: what it alone holds, or the measurement that
   proved the split necessary (R-80).

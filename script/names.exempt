@@ -16,3 +16,4 @@ script/interpreter.lock
 pyproject.toml
 pylock.toml
 .gitignore
+script/dependencies.register

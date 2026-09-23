@@ -767,6 +767,33 @@ expect_msg fail "a reason that is neither a boundary nor a measurement fails" "n
 tree d5 check-decomposition
 expect_msg fail "a tree with no services fails" "no services found" "$t/script/check-decomposition"
 
+
+# --- check-dependencies: the register and the allowlist (H4a, R-85) ---
+registered() {  # registered NAME LICENCE SHIPPED [omit]: one dependency
+    tree "$1" check-dependencies
+    printf '[workspace.dependencies]\nthing = "1.0"  # rung 2: the canonical thing\n' > "$t/Cargo.toml"  # name-ok
+    printf 'module urshanabi\n\ngo 1.27\n' > "$t/go.mod"  # name-ok
+    printf '[project]\nname = "u"\n' > "$t/pyproject.toml"  # name-ok
+    {
+        printf '[thing]\nlicence = %s\n' "$2"
+        [ "${4:-}" = omit ] || printf 'governance = one organisation\n'
+        printf 'exit = behind our own module\ndisconnection = a library\nsupply-chain = a registry\nshipped = %s\n' "$3"
+    } > "$t/script/dependencies.register"
+}
+registered v1 MIT yes  # name-ok
+expect pass "a permissive licence with a full entry passes" "$t/script/check-dependencies"
+registered v2 MIT yes omit  # name-ok
+expect_msg fail "an entry missing a field fails" "records no governance" "$t/script/check-dependencies"
+registered v3 BUSL-1.1 yes  # name-ok
+expect_msg fail "a source-available licence is refused" "source-available" "$t/script/check-dependencies"
+registered v4 GPL-3.0-only yes  # name-ok
+expect_msg fail "strong copyleft that ships inside a cell is refused" "ships inside a cell" "$t/script/check-dependencies"
+registered v5 GPL-3.0-only no  # name-ok
+expect pass "strong copyleft that never reaches a cell passes" "$t/script/check-dependencies"
+registered v6 MIT yes  # name-ok
+printf '[workspace.dependencies]\nthing = "1.0"\nother = "2.0"\n' > "$t/Cargo.toml"  # name-ok
+expect_msg fail "a dependency with no entry fails" "no entry in the register" "$t/script/check-dependencies"
+
 # Guard: a self-test whose helper is missing or misspelled fails with
 # "not found" and records nothing. Count the calls written in this file
 # and require that every one ran.

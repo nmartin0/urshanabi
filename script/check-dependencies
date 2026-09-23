@@ -1,0 +1,59 @@
+#!/bin/sh
+# script/check-dependencies: every dependency we chose has an entry in
+# script/dependencies.register, and its licence is one we accept
+# (RULES.md H4a, roadmap R-85). A source-available licence is refused
+# outright. Strong copyleft is accepted only for something that never
+# reaches a cell, because a disconnected install distributes what it
+# ships.
+set -u
+cd "$(dirname "$0")/.." || exit 1
+register=script/dependencies.register
+[ -f "$register" ] || { echo "FAIL: no dependency register"; exit 1; }
+
+awk -v register="$register" '
+function complain(who, what) { printf "DEPENDENCY %s: %s\n", who, what; bad = 1 }
+# The register: gather each entry and its fields.
+FILENAME == register && /^\[/ { name = $0; gsub(/[][]/, "", name); known[name] = 1; entry = name; next }
+FILENAME == register && /^[a-z-]+ = / {
+    field = $1; value = $0; sub(/^[a-z-]+ = /, "", value)
+    has[entry "." field] = 1
+    if (field == "licence") licence[entry] = value
+    if (field == "shipped") shipped[entry] = value
+    next
+}
+# The manifests: every direct dependency must be an entry.
+FILENAME == "Cargo.toml" && /^\[workspace.dependencies\]/ { deps = 1; next }
+FILENAME == "Cargo.toml" && /^\[/ { deps = 0 }
+FILENAME == "Cargo.toml" && deps && /^[a-zA-Z]/ { split($0, f, " "); need[f[1]] = 1 }
+FILENAME == "go.mod" && /^require \(/ { req = 1; next }  # name-ok
+FILENAME == "go.mod" && /^\)/ { req = 0 }  # name-ok
+FILENAME == "go.mod" && req && /^[ \t]*[a-z]/ && !/\/\/ indirect/ { split($0, f, " "); need[f[1]] = 1 }  # name-ok
+FILENAME == "pyproject.toml" && /^(tools|dependencies) = \[/ { list = 1; next }
+FILENAME == "pyproject.toml" && /^\]/ { list = 0 }
+FILENAME == "pyproject.toml" && list && /"/ {
+    split($0, f, "\""); name = f[2]; sub(/[=<>~!].*/, "", name); need[name] = 1
+}
+END {
+    for (name in need) {
+        if (!known[name]) { complain(name, "has no entry in the register (H4a)"); continue }
+        counted++
+    }
+    for (name in known) {
+        split("licence governance exit disconnection supply-chain shipped", fields, " ")
+        for (i in fields) {
+            if (!has[name "." fields[i]]) complain(name, "records no " fields[i])
+        }
+        this = licence[name]
+        # Source-available licences are refused outright.
+        if (this ~ /BUSL|SSPL|Elastic|Commons Clause|Polyform|Fair Source|Functional Source/) {
+            complain(name, "carries a source-available licence, which is refused (H4a): " this)
+        } else if (this ~ /GPL|AGPL/ && shipped[name] != "no") {
+            complain(name, "carries a strong copyleft licence and ships inside a cell (H4a): " this)
+        } else if (this !~ /MIT|Apache-2.0|BSD-2-Clause|BSD-3-Clause|ISC|MPL-2.0|GPL/) {  # name-ok
+            complain(name, "carries a licence the allowlist does not name (H4a): " this)
+        }
+    }
+    if (counted == 0) { print "FAIL: no dependencies found to check"; exit 1 }
+    if (bad) exit 1
+    printf "check-dependencies: %d dependencies, each with a register entry the allowlist accepts.\n", counted
+}' "$register" Cargo.toml go.mod pyproject.toml  # name-ok

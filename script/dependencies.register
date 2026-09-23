@@ -1,0 +1,178 @@
+# The dependency register (RULES.md H4a, roadmap R-85). One entry per
+# dependency we chose; transitive ones are not chosen. Each records the
+# licence, who governs it, the interface we own that replaces it,
+# whether it runs without a network, and where its releases come from.
+# Names appear here, as they do in manifests, and nowhere else (H1).
+#
+#   shipped = yes   it runs inside a cell, so its licence must meet the
+#                   recognised open-source definition
+#   shipped = no    a development or build tool; it never reaches a cell
+#
+# Source-available licences are refused outright. Strong copyleft is
+# accepted only unmodified, in its own process, and never shipped.
+
+[prost]
+licence = Apache-2.0
+governance = the contract language's implementation for the systems
+  language, maintained by several organisations
+exit = the contracts' generated code sits behind our own modules (R-06)
+disconnection = a library; no network of its own
+supply-chain = the systems language's registry, pinned by lockfile hash
+shipped = yes
+
+[prost-types]
+licence = Apache-2.0
+governance = with prost
+exit = with prost
+disconnection = a library; no network of its own
+supply-chain = the systems language's registry, pinned by lockfile hash
+shipped = no
+
+[tonic]
+licence = MIT
+governance = the RPC implementation for the systems language,
+  maintained by several organisations
+exit = services speak the contract, not this library (R-06)
+disconnection = a library; no network of its own
+supply-chain = the systems language's registry, pinned by lockfile hash
+shipped = yes
+
+[tonic-prost]
+licence = MIT
+governance = with tonic
+exit = with tonic
+disconnection = a library; no network of its own
+supply-chain = the systems language's registry, pinned by lockfile hash
+shipped = yes
+
+[tonic-prost-build]
+licence = MIT
+governance = with tonic
+exit = with tonic
+disconnection = a library; no network of its own
+supply-chain = the systems language's registry, pinned by lockfile hash
+shipped = no
+
+[tokio]
+licence = MIT
+governance = the canonical asynchronous runtime for the systems
+  language, maintained by several organisations
+exit = our services use it through their own entry points
+disconnection = a library; no network of its own
+supply-chain = the systems language's registry, pinned by lockfile hash
+shipped = yes
+
+[tracing]
+licence = MIT
+governance = with the runtime's organisation
+exit = logging sits behind our own logging module
+disconnection = a library; no network of its own
+supply-chain = the systems language's registry, pinned by lockfile hash
+shipped = yes
+
+[tracing-subscriber]
+licence = MIT
+governance = with tracing
+exit = with tracing
+disconnection = a library; no network of its own
+supply-chain = the systems language's registry, pinned by lockfile hash
+shipped = yes
+
+[serde]
+licence = MIT OR Apache-2.0
+governance = the canonical serialisation framework for the systems
+  language, maintained by several organisations
+exit = our own types derive it; the types remain ours
+disconnection = a library; no network of its own
+supply-chain = the systems language's registry, pinned by lockfile hash
+shipped = yes
+
+[serde_json]
+licence = MIT OR Apache-2.0
+governance = with serde
+exit = with serde
+disconnection = a library; no network of its own
+supply-chain = the systems language's registry, pinned by lockfile hash
+shipped = no
+
+[toml]
+licence = MIT OR Apache-2.0
+governance = the canonical parser of the ontology's format, maintained
+  by the serialisation framework's authors
+exit = only libs/ontology parses that format, behind our own loader
+  (R-51)
+disconnection = a library; no network of its own
+supply-chain = the systems language's registry, pinned by lockfile hash
+shipped = yes
+
+[google.golang.org/grpc]
+licence = Apache-2.0
+governance = the RPC implementation for the services language, under a
+  foundation
+exit = services speak the contract, not this library (R-06)
+disconnection = a library; no network of its own
+supply-chain = the services language's module proxy, verified against
+  the official checksum database
+shipped = yes
+
+[google.golang.org/protobuf]
+licence = BSD-3-Clause
+governance = the contract language's implementation, by the services
+  language's own authors
+exit = the contracts' generated code sits behind our own packages
+disconnection = a library; no network of its own
+supply-chain = the services language's module proxy, verified against
+  the official checksum database
+shipped = yes
+
+[golang.org/x/vuln]
+licence = BSD-3-Clause
+governance = the services language's own authors
+exit = the gate runs a tool; replacing it changes one gate
+disconnection = it reads a vulnerability database, which may be a local
+  copy (URSHANABI_VULNDB)
+supply-chain = the services language's module proxy, verified against
+  the official checksum database
+shipped = no
+
+[golang.org/x/tools]
+licence = BSD-3-Clause
+governance = the services language's own authors
+exit = the gate runs a tool; replacing it changes one gate
+disconnection = a tool; no network of its own
+supply-chain = the services language's module proxy, verified against
+  the official checksum database
+shipped = no
+
+[black]
+licence = MIT
+governance = the agent and pipeline language's foundation
+exit = formatting is a gate; replacing it changes one gate
+disconnection = a tool; no network of its own
+supply-chain = that language's package index, pinned by lockfile hash
+shipped = no
+
+[pylint]
+licence = GPL-2.0-or-later
+governance = that language's community organisation
+exit = linting is a gate; replacing it changes one gate
+disconnection = a tool; no network of its own
+supply-chain = that language's package index, pinned by lockfile hash
+shipped = no
+
+[mypy]
+licence = MIT
+governance = the reference type checker, under that language's own
+  organisation
+exit = type checking is a gate; replacing it changes one gate
+disconnection = a tool; no network of its own
+supply-chain = that language's package index, pinned by lockfile hash
+shipped = no
+
+[pip-audit]
+licence = Apache-2.0
+governance = that language's packaging authority
+exit = the audit is a gate; replacing it changes one gate
+disconnection = it reads an advisory database, which may be a local copy
+supply-chain = that language's package index, pinned by lockfile hash
+shipped = no
