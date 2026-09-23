@@ -6,6 +6,25 @@ package urshanabi.common.v1;
 // arguments are split by whether they may be logged: services log
 // safe_args and never unsafe_args, so the contract itself decides what
 // can reach a log (roadmap R-06).
+// FailureKind is the closed set of things that can go wrong, in our own
+// vocabulary rather than a runtime's (roadmap R-22). A caller can act on
+// each: wait, stop asking, look elsewhere, or call an operator. Nothing
+// else may reach a caller, so no answer reveals the language a service
+// is written in or the library it failed inside.
+enum FailureKind {
+  // Unset: a service that fails must say how.
+  FAILURE_KIND_UNSPECIFIED = 0;
+  // Nothing answered in time. The caller may try again later.
+  FAILURE_KIND_UNREACHABLE = 1;
+  // The request was understood and will not be served. Trying again
+  // changes nothing.
+  FAILURE_KIND_REFUSED = 2;
+  // There is nothing to return, and that is not an error in itself.
+  FAILURE_KIND_EMPTY = 3;
+  // A service cannot do its work as configured. An operator must act.
+  FAILURE_KIND_MISCONFIGURED = 4;
+}
+
 message ErrorDetail {
   // A stable, machine-readable reason, such as "OBJECT_NOT_FOUND".
   string reason = 1;
@@ -15,6 +34,8 @@ message ErrorDetail {
   // Arguments that must never be logged: anything that could contain
   // customer data, credentials or query text.
   repeated ErrorArgument unsafe_args = 3;
+  // Which of the four kinds this failure is (R-22).
+  FailureKind kind = 4;
 }
 
 // ErrorArgument is one named value attached to an error.

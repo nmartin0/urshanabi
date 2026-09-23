@@ -216,3 +216,14 @@ func TestEveryResponseCarriesTheSecurityHeaders(t *testing.T) {
 		}
 	}
 }
+
+// read returns the response's body as text.
+func read(t *testing.T, resp *http.Response) string {
+	t.Helper()
+	defer func() { _ = resp.Body.Close() }()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("the body is unreadable: %v", err)
+	}
+	return string(body)
+}

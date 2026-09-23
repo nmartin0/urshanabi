@@ -7,3 +7,4 @@ rust-toolchain.toml
 .go`
 pub mod google
 pub mod protobuf
+go wrong

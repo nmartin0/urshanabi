@@ -1445,7 +1445,16 @@ then audit and operations.
 ### R-22 Failure kinds in our own vocabulary
 
 - **Class:** foundation
-- **Status:** planned
+- **Status:** done — the contract names four kinds, unreachable,
+  refused, empty and misconfigured, and every failure the gateway
+  answers carries its kind and the request's id and nothing else, the
+  router's own refusals included; a producer stating its own kind is
+  believed, and otherwise the transport's code decides
+  (`contracts/urshanabi/common/v1/errors.proto`,
+  `services/gateway/internal/failure/failure.go`). A test provokes every
+  failure a caller can reach and fails if an answer is not exactly a
+  kind and an id, or names a type, a library or a language; a planted
+  leak of a runtime error was caught by both.
 - **Outcome:** failures map to a closed set of our own kinds:
   unreachable, refused, empty, misconfigured.
 - **Learned from Elysium:** source status reports the runtime's
