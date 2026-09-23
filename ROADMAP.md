@@ -2555,7 +2555,15 @@ What an independent reviewer and a first customer will check.
 ### R-61 Startup validates what configuration cannot
 
 - **Class:** foundation
-- **Status:** planned
+- **Status:** in progress — the gateway asks each service it depends
+  on, at startup and within a bound, whether it is there, and reports it
+  by name and address rather than leaving the first request to discover
+  it; a service still starts, so what does not need the missing
+  dependency keeps working
+  (`services/gateway/internal/startup/startup.go`). Two tests cover the
+  report and its bound, and the report never repeats the transport's
+  words (R-22); remaining: every source, credential and table shape,
+  which arrive with ingestion.
 - **Outcome:** each cell checks every source, credential and table
   shape at startup and reports by name.
 - **Learned from Elysium:** configuration was validated at load;

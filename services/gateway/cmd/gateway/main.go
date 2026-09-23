@@ -18,7 +18,11 @@ import (
 	"urshanabi/services/gateway/internal/identity"
 	"urshanabi/services/gateway/internal/logging"
 	"urshanabi/services/gateway/internal/server"
+	"urshanabi/services/gateway/internal/startup"
 )
+
+// startupBound is how long each dependency has to answer at startup.
+const startupBound = 3 * time.Second
 
 func main() {
 	log := logging.New(os.Stderr)
@@ -29,7 +33,8 @@ func main() {
 	}
 	// Mutual TLS between services is the mesh's job (roadmap R-126), so the
 	// connection itself is plain.
-	conn, err := rpc.NewClient(env("URSHANABI_QUERY_ADDRESS", "127.0.0.1:50051"),
+	queryAddress := env("URSHANABI_QUERY_ADDRESS", "127.0.0.1:50051")
+	conn, err := rpc.NewClient(queryAddress,
 		rpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Error("cannot reach the query service", "error", err)
@@ -51,6 +56,18 @@ func main() {
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	// What configuration cannot tell: whether what we depend on is there
+	// (roadmap R-61). A missing dependency is reported here, by name,
+	// rather than by the first request that needs it.
+	startup.Report(ctx, log, startupBound, startup.Dependency{
+		Name:  "query",
+		Where: queryAddress,
+		Ask: func(ctx context.Context) error {
+			_, err := buildv1.NewBuildServiceClient(conn).GetBuildInfo(ctx, &buildv1.GetBuildInfoRequest{})
+			return err
+		},
+	})
+
 	log.Info("listening", "address", lis.Addr().String())
 	// Serve returns only after in-flight requests finish, so the connection
 	// they use is closed after them, not under them.
