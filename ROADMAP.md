@@ -2647,7 +2647,15 @@ What an independent reviewer and a first customer will check.
 ### R-123 Asset inventory and network map, yearly
 
 - **Class:** foundation
-- **Status:** planned
+- **Status:** in progress — `docs/inventory.md` is generated from the
+  repository itself by `script/inventory`: every component with its
+  language role, what it holds and what it speaks to, the flows between
+  them, and every dependency we chose with its licence and whether it
+  ships inside a cell. CI regenerates it and fails if it no longer
+  matches, so a component added without recording it fails the build,
+  which three self-tests prove (`script/check-inventory`); remaining:
+  keys and the network map, which arrive with the control plane and the
+  mesh, and the yearly review recorded against the compliance matrix.
 - **Outcome:** a machine-generated inventory of every component,
   dependency, key and data flow, with a network map, is reviewed at
   least every twelve months and on every significant change.

@@ -3,8 +3,8 @@
 The behaviour specification (`BEHAVIOURS.md`) and the black-box suite
 that checks it, reaching each system through a thin driver.
 
-- **Language role:** POSIX shell for now, like the journeys; the long-term
-  language is still to be decided
+- **Language role:** the agent and pipeline language for the behaviour
+  properties; POSIX shell for the infrastructure checks and the drivers
 - **Holds:** nothing
 - **Speaks to:** each system under test, through its driver
 - **Roadmap:** R-07

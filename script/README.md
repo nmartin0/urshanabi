@@ -29,6 +29,8 @@ script/cibuild    # exactly what CI runs: bootstrap, test, test-integration
 
 Repository checks, each runnable on its own:
 
+- `check-inventory` — the asset inventory matches the repository;
+  `inventory` regenerates it (R-123).
 - `check-licences` — each recorded licence is the one the dependency
   itself declares (H4a, R-85).
 - `check-names` — no name outside manifests and tool configuration

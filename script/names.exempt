@@ -17,3 +17,4 @@ pyproject.toml
 pylock.toml
 .gitignore
 script/dependencies.register
+docs/inventory.md

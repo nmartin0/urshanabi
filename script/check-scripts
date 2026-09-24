@@ -863,6 +863,28 @@ expect pass "a presence check passes: it compares against nothing" "$t/script/ch
 compares c5 '	return count == wanted'
 expect pass "a comparison of something that is not a secret passes" "$t/script/check-constant-time"
 
+
+# --- check-inventory: the inventory matches the repository (R-123) ----
+inventoried() {  # inventoried NAME: a tree with one component and a register
+    tree "$1" check-inventory inventory
+    mkdir -p "$t/services/thing"
+    printf '# Thing\n\n- **Language role:** services language\n- **Holds:** nothing\n- **Speaks to:** nobody\n' > "$t/services/thing/README.md"
+    printf '[thing]\nlicence = MIT\nshipped = yes\n' > "$t/script/dependencies.register"  # name-ok
+    mkdir -p "$t/docs"
+    (cd "$t" && git add -A >/dev/null 2>&1)  # name-ok
+    (cd "$t" && ./script/inventory > docs/inventory.md)
+}
+inventoried y1
+expect pass "an inventory matching the repository passes" "$t/script/check-inventory"
+inventoried y2
+mkdir -p "$t/services/another"
+printf '# Another\n\n- **Language role:** services language\n- **Holds:** nothing\n- **Speaks to:** nobody\n' > "$t/services/another/README.md"
+(cd "$t" && git add -A >/dev/null 2>&1)  # name-ok
+expect_msg fail "a component missing from the inventory fails" "no longer matches the repository" "$t/script/check-inventory"
+inventoried y3
+rm -f "$t/docs/inventory.md"
+expect_msg fail "a missing inventory fails" "there is no asset inventory" "$t/script/check-inventory"
+
 # Guard: a self-test whose helper is missing or misspelled fails with
 # "not found" and records nothing. Count the calls written in this file
 # and require that every one ran.
