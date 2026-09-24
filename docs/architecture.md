@@ -215,3 +215,7 @@ through the pipelines (R-118).
   engine, contained by its licence and a disposable index.
 - **Physical attacks** on confidential computing are unsolved
   industry-wide; ceilings limit what any cell may hold.
+
+The network posture — where transport security ends, which proxies may
+say where a request came from, and what a service binds to — is stated
+in `docs/network-posture.md` (R-59).

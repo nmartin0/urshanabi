@@ -6,12 +6,15 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"net/netip"
+	"os"
 	"time"
 
 	"google.golang.org/grpc/metadata"                    // name-ok
 	wire "google.golang.org/protobuf/encoding/protojson" // name-ok
 	"google.golang.org/protobuf/types/known/timestamppb" // name-ok
 
+	"urshanabi/services/gateway/internal/caller"
 	"urshanabi/services/gateway/internal/dependency"
 	"urshanabi/services/gateway/internal/failure"
 	buildv1 "urshanabi/services/gateway/internal/gen/urshanabi/build/v1"
@@ -31,10 +34,11 @@ const (
 
 // Server answers the web API.
 type Server struct {
-	self  *buildv1.BuildInfo
-	query buildv1.BuildServiceClient
-	guard *dependency.Guard
-	log   *slog.Logger
+	self    *buildv1.BuildInfo
+	query   buildv1.BuildServiceClient
+	guard   *dependency.Guard
+	trusted []netip.Prefix
+	log     *slog.Logger
 }
 
 // New returns a server reporting self and asking query for its build.
@@ -49,7 +53,10 @@ func New(self identity.Build, query buildv1.BuildServiceClient, log *slog.Logger
 		},
 		query: query,
 		guard: dependency.New(callsAtOnce, failuresResting, restFor, callTimeout),
-		log:   log,
+		// Which proxies may say where a request came from (R-59). None,
+		// unless configuration names them.
+		trusted: caller.Trusted(os.Getenv("URSHANABI_TRUSTED_PROXIES")),
+		log:     log,
 	}
 }
 
@@ -97,7 +104,7 @@ func (s *Server) builds(w http.ResponseWriter, r *http.Request) {
 		writeFailure(w, http.StatusInternalServerError, failure.Misconfigured, id)
 		return
 	}
-	s.log.Info("GetBuildInfo", "request_id", id, "builds", len(builds))
+	s.log.Info("GetBuildInfo", "request_id", id, "caller", caller.Of(r, s.trusted), "builds", len(builds))
 	writeJSON(w, http.StatusOK, body)
 }
 

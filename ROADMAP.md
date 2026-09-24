@@ -2532,7 +2532,17 @@ What an independent reviewer and a first customer will check.
 ### R-59 Network posture decided in one place
 
 - **Class:** foundation
-- **Status:** planned
+- **Status:** done — `docs/network-posture.md` states the posture in
+  one place: transport security ends at the cell's ingress and the mesh
+  carries every hop inside, no proxy may say where a request came from
+  unless configuration names it, and what a service binds to is a
+  configuration value. A client-address header from a caller we do not
+  trust is ignored and the connection's own address recorded instead;
+  the chain from a trusted proxy is read from the right, stepping over
+  our own (`services/gateway/internal/caller/caller.go`). A configured
+  value that cannot be read trusts nothing, so a mistake can only trust
+  less. Six tests, and a planted rule that believed the header whenever
+  it appeared was caught both in the rule and in the gateway's own log.
 - **Outcome:** a documented posture: where TLS ends, which proxies may
   set client-address headers, and binding as a configuration value.
 - **Learned from Elysium:** bound to loopback for convenience, with

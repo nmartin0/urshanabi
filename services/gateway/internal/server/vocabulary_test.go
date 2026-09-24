@@ -58,3 +58,23 @@ func TestEveryFailureAnswersInOurOwnVocabulary(t *testing.T) {
 		}
 	}
 }
+
+// A caller cannot put another address in our logs (roadmap R-59).
+func TestAForgedCallerAddressNeverReachesTheLog(t *testing.T) {
+	var log syncBuffer
+	web := startLogging(t, &fakeQuery{}, &log)
+	req, _ := http.NewRequest("GET", web.URL+"/v1/builds", nil)
+	req.Header.Set("X-Forwarded-For", "198.51.100.23") // name-ok
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = resp.Body.Close()
+	said := log.String()
+	if strings.Contains(said, "198.51.100.23") {
+		t.Errorf("the log records the address the caller claimed: %s", said)
+	}
+	if !strings.Contains(said, `"caller":"127.0.0.1"`) {
+		t.Errorf("the log does not record the address the connection came from: %s", said)
+	}
+}
