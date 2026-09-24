@@ -1,0 +1,41 @@
+#!/bin/sh
+# script/check-references: configuration names a secret, never carries
+# one (roadmap R-92). The secret scanner finds credentials that look
+# real; this finds the other half, a setting that holds any value at all
+# where it should hold a reference to the secret store. "changeme" is
+# not a credential a scanner would notice, and it is exactly how a
+# password reaches a manifest and then an image.
+#
+# A reference is a name to look up, not a value: ${SOMETHING}, env:NAME,
+# file:/path, secret://where, or a setting whose name ends in _ref.
+# The forms are generic on purpose: no secret store's name appears here.
+set -u
+cd "$(dirname "$0")/.." || exit 1
+
+named='password|passwd|secret|token|credential|private_key|api_key|access_key'
+reference='\$\{[^}]*\}|\$[A-Z_][A-Z0-9_]*|env:|file:|secret://|ref:'
+
+files=$(git ls-files | grep -E '\.(ya?ml|json|toml|ini|env|properties|conf)$|(^|/)deploy/' |  # name-ok
+    grep -v -E '(^|/)(Cargo|pyproject|pylock)\.toml$|^contracts/buf|(^|/)package-lock\.json$')  # name-ok
+checked=0
+failed=""
+for file in $files; do
+    [ -f "$file" ] || continue
+    checked=$((checked + 1))
+    # A setting whose name says secret, holding something that is not a
+    # reference and not empty.
+    found=$(grep -n -i -E "^[^#]*($named)[a-z_]*[\"']?[[:space:]]*[:=][[:space:]]*[\"']?[^\"'[:space:]]" "$file" |
+        grep -v -E "($reference)" |
+        grep -v -i -E "_ref[\"']?[[:space:]]*[:=]|public_key|(:|=)[[:space:]]*(null|true|false)[[:space:]]*$" |
+        grep -v 'reference-ok')
+    if [ -n "$found" ]; then
+        echo "$found" | sed "s|^|REFERENCE $file:|"
+        failed="$failed $file"
+    fi
+done
+if [ -n "$failed" ]; then
+    echo "check-references FAILED:$failed"
+    echo "Configuration names a secret; it never carries one (R-92)."
+    exit 1
+fi
+echo "check-references: $checked configuration files; every secret is a reference."

@@ -885,6 +885,27 @@ inventoried y3
 rm -f "$t/docs/inventory.md"
 expect_msg fail "a missing inventory fails" "there is no asset inventory" "$t/script/check-inventory"
 
+
+# --- check-references: configuration names secrets (R-92) -------------
+configured() {  # configured NAME LINE: one configuration file with LINE
+    tree "$1" check-references
+    mkdir -p "$t/deploy"
+    printf '%s\n' "$2" > "$t/deploy/cell.yaml"
+    (cd "$t" && git add -A >/dev/null 2>&1)  # name-ok
+}
+configured z1 "password: \${CELL_PASSWORD}"  # name-ok
+expect pass "a setting naming a secret passes" "$t/script/check-references"
+configured z2 'password: changeme'  # name-ok
+expect_msg fail "a setting carrying a secret fails" "REFERENCE" "$t/script/check-references"
+configured z3 'api_key: "sk-not-a-real-key"'  # name-ok
+expect_msg fail "a carried key fails even where a scanner would not look" "REFERENCE" "$t/script/check-references"
+configured z4 'token_ref: cell/gateway/token'  # name-ok
+expect pass "a setting whose name says it is a reference passes" "$t/script/check-references"
+configured z5 'public_key: AAAAB3NzaC1yc2E'  # name-ok
+expect pass "a public key is not a secret" "$t/script/check-references"
+configured z6 '# password: changeme'  # name-ok
+expect pass "a line that is only a comment passes" "$t/script/check-references"
+
 # Guard: a self-test whose helper is missing or misspelled fails with
 # "not found" and records nothing. Count the calls written in this file
 # and require that every one ran.

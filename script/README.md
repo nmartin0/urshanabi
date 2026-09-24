@@ -61,6 +61,8 @@ Repository checks, each runnable on its own:
 - `check-decomposition` — every separately deployed service records
   why it is separate: what it alone holds, or the measurement that
   proved the split necessary (R-80).
+- `check-references` — configuration names a secret, never carries
+  one (R-92).
 - `check-rungs` — every direct dependency records its rung on the
   standard-library ladder, beside itself in its manifest (E1, R-127).
 - `check-scripts` — the scripts' own tests: every gate is broken on

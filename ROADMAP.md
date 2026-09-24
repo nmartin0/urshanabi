@@ -852,7 +852,18 @@ and lineage.
 ### R-92 Secrets are references, never values
 
 - **Class:** foundation
-- **Status:** planned
+- **Status:** in progress — configuration may name a secret but never
+  carry one: a setting whose name says password, token, credential or
+  key fails the build unless it holds a reference, which is a name to
+  look up rather than a value (`script/check-references`). This is the
+  half the secret scanner cannot do, since a placeholder such as
+  "changeme" looks like no credential at all, and it is how a password
+  reaches a manifest and then an image. The reference forms are generic,
+  so no secret store's name appears in our code. Six self-tests prove
+  it, including that a public key is not a secret and a commented line
+  is not a setting; remaining: the loader that refuses to start when a
+  reference is missing, naming the field, which arrives with the
+  configuration bundles it would read.
 - **Outcome:** every credential in configuration is a reference to the
   secret store, never a value; a missing reference refuses to load and
   names the field; secrets never reach logs, errors, bundles or the
